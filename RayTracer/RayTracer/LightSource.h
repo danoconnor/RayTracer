@@ -10,8 +10,8 @@ namespace RayTracer
 			LightSource(Vector posOrDir);
 			LightSource(Vector posOrDir, COLORREF color);
 
-			Vector &GetPosorDir() { return m_posOrDir; }
-			COLORREF GetColor() { return m_color; }
+			const Vector &GetPosorDir() const { return m_posOrDir; }
+			const COLORREF GetColor() const { return m_color; }
 
 		private:
 			Vector m_posOrDir;

@@ -14,9 +14,9 @@ namespace RayTracer
 
 			void DrawWorld(SDL_Surface *surface);
 
-			void AddWorldObject(const WorldObject &object);
-			void AddSun(const LightSource &sun);
-			void AddPointLight(const LightSource &light);
+			void AddWorldObject(const WorldObject *object);
+			void AddSun(const LightSource *sun);
+			void AddPointLight(const LightSource *light);
 
 			void StepForward(float amount);
 			void StepBackward(float amount);
@@ -32,10 +32,10 @@ namespace RayTracer
 			void MoveDown(float amount);
 
 			void SetEye(const Vector &newEye);
-			const Vector& GetEye(); // To change the value of the eye vector, use SetEye
+			const Vector& GetEye();
 
 			void SetForward(const Vector &newForward);
-			const Vector& GetForward(); // To change the value of the forward vector, use SetForward
+			const Vector& GetForward();
 
 			const Vector& GetUp();
 			const Vector& GetRight();
@@ -43,14 +43,14 @@ namespace RayTracer
 		private:
 			struct Collision
 			{
-				Collision(WorldObject *obj, const Vector &point, float dist)
+				Collision(const WorldObject *obj, const Vector &point, float dist)
 				{
 					object = obj;
 					collisionPoint = point;
 					distance = dist;
 				}
 
-				WorldObject *object;
+				const WorldObject *object;
 				Vector collisionPoint;
 				float distance; // distance from collisionPoint to the origin of the ray
 			};
@@ -59,6 +59,7 @@ namespace RayTracer
 
 			COLORREF TraceRay(const Vector &ray);
 
+			void DrawWorldSubset(SDL_Surface *surface, int beginY, int endY);
 			inline void SetSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 red, Uint8 green, Uint8 blue);
 
 			Vector m_eye;
@@ -66,9 +67,9 @@ namespace RayTracer
 			Vector m_right;
 			Vector m_up;
 
-			std::vector<WorldObject *> m_worldObjects;
-			std::vector<LightSource *> m_suns;
-			std::vector<LightSource *> m_pointLights;
+			std::vector<const WorldObject *> m_worldObjects;
+			std::vector<const LightSource *> m_suns;
+			std::vector<const LightSource *> m_pointLights;
 
 			std::vector<cimg_library::CImg<unsigned char>> m_loadedTexures;
 

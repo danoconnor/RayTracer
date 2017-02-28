@@ -17,6 +17,7 @@
 #include <time.h>
 #include <thread>
 #include <atomic>
+#include <assert.h>
 
 #include "CImg-2.0/CImg.h"
 

@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "World.h"
 
+#define NUM_RAY_TRACE_THREADS 8
+
 namespace RayTracer
 {
 	World::World() : m_eye(0, 0, 0), m_forward(0, 0, -1), m_right(1, 0, 0), m_up(0, 1, 0)
@@ -9,17 +11,17 @@ namespace RayTracer
 
 	World::~World()
 	{
-		for (WorldObject *object : m_worldObjects)
+		for (const WorldObject *object : m_worldObjects)
 		{
 			delete object;
 		}
 
-		for (LightSource *sun : m_suns)
+		for (const LightSource *sun : m_suns)
 		{
 			delete sun;
 		}
 
-		for (LightSource *pointLight : m_pointLights)
+		for (const LightSource *pointLight : m_pointLights)
 		{
 			delete pointLight;
 		}
@@ -27,45 +29,40 @@ namespace RayTracer
 
 	void World::DrawWorld(SDL_Surface *surface)
 	{
-		int windowWidth = surface->w;
-		int windowHeight = surface->h;
-		int maxDim = windowWidth > windowHeight ? windowWidth : windowHeight;
+		std::thread threads[NUM_RAY_TRACE_THREADS];
 
-		float s, t;
-		Vector ray;
+		int surfaceHeight = surface->h;
+		int rowsPerThread = (int)floor(surfaceHeight / NUM_RAY_TRACE_THREADS);
 
-		for (int y = 0; y < windowHeight; ++y)
+		// Start the threads, each of which will draw a section of the rows in the window
+		for (int i = 0; i < NUM_RAY_TRACE_THREADS; ++i)
 		{
-			for (int x = 0; x < windowWidth; ++x)
-			{
-				s = (2.f * x - windowWidth) / maxDim;
-				t = (windowHeight - 2.f * y) / maxDim;
+			int beginRow = (i * rowsPerThread);
+			int endRow = min((i + 1) * rowsPerThread, surfaceHeight);
 
-				ray.m_x = m_forward.m_x + s*m_right.m_x + t*m_up.m_x;
-				ray.m_y = m_forward.m_y + s*m_right.m_y + t*m_up.m_y;
-				ray.m_z = m_forward.m_z + s*m_right.m_z + t*m_up.m_z;
+			threads[i] = std::thread(&World::DrawWorldSubset, this, surface, beginRow, endRow);
+		}
 
-				ray.normalize();
-
-				COLORREF color = TraceRay(ray);
-				SetSurfacePixel(surface, x, y, GetRValue(color), GetGValue(color), GetBValue(color));
-			}
+		// Wait for each thread to finish executing.
+		for (int i = 0; i < NUM_RAY_TRACE_THREADS; ++i)
+		{
+			threads[i].join();
 		}
 	}
 
-	void World::AddWorldObject(const WorldObject &object)
+	void World::AddWorldObject(const WorldObject *object)
 	{
-		m_worldObjects.push_back(new WorldObject(object));
+		m_worldObjects.push_back(object);
 	}
 
-	void World::AddSun(const LightSource &sun)
+	void World::AddSun(const LightSource *sun)
 	{
-		m_suns.push_back(new LightSource(sun));
+		m_suns.push_back(sun);
 	}
 
-	void World::AddPointLight(const LightSource &light)
+	void World::AddPointLight(const LightSource *light)
 	{
-		m_pointLights.push_back(new LightSource(light));
+		m_pointLights.push_back(light);
 	}
 
 	void World::StepForward(float amount)
@@ -230,7 +227,7 @@ namespace RayTracer
 	{
 		std::vector<Collision> collisions;
 
-		for (WorldObject *obj : m_worldObjects)
+		for (const WorldObject *obj : m_worldObjects)
 		{
 			float collisionDist;
 			Vector cPoint;
@@ -240,7 +237,8 @@ namespace RayTracer
 			}
 		}
 
-		std::sort(collisions.begin(), collisions.end(), &World::SortByDistToEye); // Sort so that the closest points are at the front of the list
+		// Sort so that the closest points are at the front of the list
+		std::sort(collisions.begin(), collisions.end(), &World::SortByDistToEye);
 
 		float eyeRayAlpha = 1;
 
@@ -254,16 +252,17 @@ namespace RayTracer
 			Uint8 green = 0;
 			Uint8 blue = 0;
 
-			for (LightSource *pointlight : m_pointLights)
+			for (const LightSource *pointlight : m_pointLights)
 			{
 				Vector lightDir = pointlight->GetPosorDir() - collision.collisionPoint;
 				float xDiff = lightDir.m_x;
 				lightDir.normalize();
 
-				float distToBulb = xDiff / lightDir.m_x; // Calculate T-value, not true distance
+				// Calculate T-value, not true distance
+				float distToBulb = xDiff / lightDir.m_x;
 
 				float lightRayAlpha = 1.f;
-				for (WorldObject *obj : m_worldObjects)
+				for (const WorldObject *obj : m_worldObjects)
 				{
 					if (obj != collision.object)
 					{
@@ -302,13 +301,13 @@ namespace RayTracer
 				}
 			}
 
-			for (LightSource *sun : m_suns)
+			for (const LightSource *sun : m_suns)
 			{
 				Vector lightDir = sun->GetPosorDir();
 
 				float sunRayAlpha = 1.f;
 
-				for (WorldObject *obj : m_worldObjects)
+				for (const WorldObject *obj : m_worldObjects)
 				{
 					if (obj != collision.object)
 					{
@@ -372,9 +371,37 @@ namespace RayTracer
 		return c1.distance < c2.distance;
 	}
 
+	void World::DrawWorldSubset(SDL_Surface *surface, int beginY, int endY)
+	{
+		int windowWidth = surface->w;
+		int windowHeight = surface->h;
+		int maxDim = windowWidth > windowHeight ? windowWidth : windowHeight;
+
+		float s, t;
+		Vector ray;
+
+		for (int y = beginY; y < endY; ++y)
+		{
+			for (int x = 0; x < windowWidth; ++x)
+			{
+				s = (2.f * x - windowWidth) / maxDim;
+				t = (windowHeight - 2.f * y) / maxDim;
+
+				ray.m_x = m_forward.m_x + s*m_right.m_x + t*m_up.m_x;
+				ray.m_y = m_forward.m_y + s*m_right.m_y + t*m_up.m_y;
+				ray.m_z = m_forward.m_z + s*m_right.m_z + t*m_up.m_z;
+
+				ray.normalize();
+
+				COLORREF color = TraceRay(ray);
+				SetSurfacePixel(surface, x, y, GetRValue(color), GetGValue(color), GetBValue(color));
+			}
+		}
+	}
+
 	inline void World::SetSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 red, Uint8 green, Uint8 blue)
 	{
-		Uint8 *target = (Uint8 *)surface->pixels + y * surface->pitch + x * Surface_Pixel_Size;
+		Uint8 *target = (Uint8 *)surface->pixels + (y * surface->pitch) + (x * Surface_Pixel_Size);
 		*target = blue;
 		*(target + 1) = green;
 		*(target + 2) = red;

@@ -14,9 +14,9 @@ namespace RayTracer
 			void Run();
 			void Stop();
 
-			void AddObject(const WorldObject &object);
-			void AddSun(const LightSource &sun);
-			void AddPointLight(const LightSource &pointLight);
+			void AddObject(const WorldObject *object);
+			void AddSun(const LightSource *sun);
+			void AddPointLight(const LightSource *pointLight);
 
 		private:
 			void RunLoop();
@@ -25,6 +25,7 @@ namespace RayTracer
 			void ProcessUserInput();
 
 			std::atomic<bool> m_isRunning;
+			std::atomic<bool> m_outputFPS;
 
 			SDL_Surface *m_surface;
 			SDL_Window *m_window;

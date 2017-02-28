@@ -20,6 +20,7 @@ RayTracer::RayTracer::RayTracer()
 	m_world = new World();
 
 	m_isRunning = false;
+	m_outputFPS = true;
 }
 
 RayTracer::RayTracer::~RayTracer()
@@ -33,8 +34,7 @@ RayTracer::RayTracer::~RayTracer()
 void RayTracer::RayTracer::Run()
 {
 	m_isRunning = true;
-	std::thread test(&RayTracer::RayTracer::RunLoop, this); // Kick off a new thread that will handle user input and drawing the game world
-	test.join();
+	RunLoop();
 }
 
 void RayTracer::RayTracer::Stop()
@@ -42,24 +42,49 @@ void RayTracer::RayTracer::Stop()
 	m_isRunning = false;
 }
 
-void RayTracer::RayTracer::AddObject(const WorldObject & object)
+void RayTracer::RayTracer::AddObject(const WorldObject* object)
 {
+	m_world->AddWorldObject(object);
 }
 
-void RayTracer::RayTracer::AddSun(const LightSource & sun)
+void RayTracer::RayTracer::AddSun(const LightSource* sun)
 {
+	m_world->AddSun(sun);
 }
 
-void RayTracer::RayTracer::AddPointLight(const LightSource & pointLight)
+void RayTracer::RayTracer::AddPointLight(const LightSource* pointLight)
 {
+	m_world->AddPointLight(pointLight);
 }
 
 void RayTracer::RayTracer::RunLoop()
 {
+	float fps = 0;
+	long begin = 0;
+	long end = 0;
+
 	while (m_isRunning)
 	{
+		begin = GetTickCount();
+
 		ProcessUserInput();
 		DrawWorld();
+
+		end = GetTickCount();
+
+		if (begin != end)
+		{
+			fps = (1.f / (end - begin)) * 1000;
+		}
+		else
+		{
+			fps = 1000;
+		}
+		
+		if (m_outputFPS)
+		{
+			printf("FPS: %f\n", fps);
+		}
 	}
 }
 
@@ -134,12 +159,17 @@ void RayTracer::RayTracer::ProcessUserInput()
 				case SDLK_p:
 				{
 					const Vector &eye = m_world->GetEye();
-					printf("Eye: %f, %f, %f", eye.m_x, eye.m_y, eye.m_z);
+					printf("Eye: %f, %f, %f\n", eye.m_x, eye.m_y, eye.m_z);
 					break;
 				}
 				case SDLK_ESCAPE:
 				{
 					Stop();
+					break;
+				}
+				case SDLK_f:
+				{
+					m_outputFPS = !m_outputFPS;
 					break;
 				}
 			}

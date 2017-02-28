@@ -91,6 +91,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Textures\TRex.stl">
+      <Filter>Textures</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\brick.bmp">

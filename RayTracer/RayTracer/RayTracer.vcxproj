@@ -111,7 +111,7 @@
       <Command>xcopy /y $(ProjectDir)SDL2-2.0.5\lib\x64\SDL2.dll $(OutDir)</Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy SDL2.dll to output dir.</Message>
+      <Message>Copy SDL.dll to output directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -146,7 +146,14 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(ProjectDir)SDL2-2.0.5\lib\x64\SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y $(ProjectDir)SDL2-2.0.5\lib\x64\SDL2.dll $(OutDir)</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy SDL.dll to output directory.</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="LightSource.h" />
@@ -183,6 +190,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Textures\TRex.stl">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Textures\brick.bmp">
