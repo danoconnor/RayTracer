@@ -1,10 +1,12 @@
 #include "stdafx.h"
 #include "RayTracer.h"
 
-const float RayTracer::RayTracer::Movement_Step = 0.2f;
-const float RayTracer::RayTracer::Look_Step = 0.2f;
+namespace RT = RayTracer;
 
-RayTracer::RayTracer::RayTracer()
+const float RT::RayTracer::Movement_Step = 0.2f;
+const float RT::RayTracer::Look_Step = 0.2f;
+
+RT::RayTracer::RayTracer()
 {
 	SDL_Init(SDL_INIT_VIDEO);
 
@@ -18,12 +20,14 @@ RayTracer::RayTracer::RayTracer()
 	m_surface = SDL_GetWindowSurface(m_window);
 
 	m_world = new World();
+	m_world->SetEye(Vector(-230, 350, 1000));
+	m_world->SetForward(Vector(0.7f, -0.1f, -1.f));
 
 	m_isRunning = false;
 	m_outputFPS = true;
 }
 
-RayTracer::RayTracer::~RayTracer()
+RT::RayTracer::~RayTracer()
 {
 	SDL_DestroyWindow(m_window);
 	SDL_Quit();
@@ -31,44 +35,100 @@ RayTracer::RayTracer::~RayTracer()
 	delete m_world;
 }
 
-void RayTracer::RayTracer::Run()
+void RT::RayTracer::Run()
 {
 	m_isRunning = true;
 	RunLoop();
 }
 
-void RayTracer::RayTracer::Stop()
+void RT::RayTracer::Stop()
 {
 	m_isRunning = false;
 }
 
-void RayTracer::RayTracer::AddObject(const WorldObject* object)
+void RT::RayTracer::AddTriangle(const TrianglePlane *triangle)
 {
-	m_world->AddWorldObject(object);
+	m_world->AddTriangle(triangle);
 }
 
-void RayTracer::RayTracer::AddSun(const LightSource* sun)
+void RT::RayTracer::AddSphere(const Sphere *sphere)
+{
+	m_world->AddSphere(sphere);
+}
+
+void RT::RayTracer::AddRectangle(const RectangularPlane* rectangle)
+{
+	m_world->AddRectangle(rectangle);
+}
+
+void RT::RayTracer::AddSun(const LightSource* sun)
 {
 	m_world->AddSun(sun);
 }
 
-void RayTracer::RayTracer::AddPointLight(const LightSource* pointLight)
+void RT::RayTracer::AddPointLight(const LightSource* pointLight)
 {
 	m_world->AddPointLight(pointLight);
 }
 
-void RayTracer::RayTracer::RunLoop()
+void RT::RayTracer::Add3DObject(const std::string &filePath)
+{
+	Assimp::Importer importer;
+	const aiScene *scene = importer.ReadFile(filePath,
+		aiProcess_CalcTangentSpace |
+		aiProcess_Triangulate |
+		aiProcess_JoinIdenticalVertices |
+		aiProcess_SortByPType);
+	std::string error = importer.GetErrorString();
+	if (error.length() > 0)
+	{
+		printf("Error when trying to import %s.\nError string: %s", filePath.c_str(), error.c_str());
+	}
+
+	std::vector<const RT::TrianglePlane*> meshTriangles;
+	if (scene != nullptr)
+	{
+		COLORREF triangleColor = 0xffffffff;
+		aiMesh *mesh = scene->mMeshes[0];
+		for (unsigned int faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
+		{
+			aiFace face = mesh->mFaces[faceIndex];
+			assert(face.mNumIndices == 3);
+			if (face.mNumIndices == 3)
+			{
+				aiVector3D vertex1 = mesh->mVertices[face.mIndices[0]];
+				aiVector3D vertex2 = mesh->mVertices[face.mIndices[1]];
+				aiVector3D vertex3 = mesh->mVertices[face.mIndices[2]];
+
+				RT::TrianglePlane *triangle = new RT::TrianglePlane(RT::Vector(vertex1.x, vertex1.y, vertex1.z),
+					RT::Vector(vertex2.x, vertex2.y, vertex2.z),
+					RT::Vector(vertex3.x, vertex3.y, vertex3.z),
+					triangleColor,
+					1.f);
+				AddTriangle(triangle);
+			}
+		}
+	}
+}
+
+void RT::RayTracer::RunLoop()
 {
 	float fps = 0;
 	long begin = 0;
 	long end = 0;
 
+	bool drawWorld = true;
 	while (m_isRunning)
 	{
 		begin = GetTickCount();
 
 		ProcessUserInput();
-		DrawWorld();
+
+		// We're only going to draw the world once but we need the loop to continue to process input so that the window doesn't appear to hang.
+		if (drawWorld)
+		{
+			DrawWorld();
+		}
 
 		end = GetTickCount();
 
@@ -81,14 +141,15 @@ void RayTracer::RayTracer::RunLoop()
 			fps = 1000;
 		}
 		
-		if (m_outputFPS)
+		if (m_outputFPS && drawWorld)
 		{
 			printf("FPS: %f\n", fps);
+			drawWorld = false;
 		}
 	}
 }
 
-void RayTracer::RayTracer::ProcessUserInput()
+void RT::RayTracer::ProcessUserInput()
 {
 	SDL_Event e;
 	while (SDL_PollEvent(&e) != 0)
@@ -177,7 +238,7 @@ void RayTracer::RayTracer::ProcessUserInput()
 	}
 }
 
-void RayTracer::RayTracer::DrawWorld()
+void RT::RayTracer::DrawWorld()
 {
 	SDL_Surface *surface = SDL_GetWindowSurface(m_window);
 	m_world->DrawWorld(surface);

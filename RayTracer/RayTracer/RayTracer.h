@@ -14,9 +14,15 @@ namespace RayTracer
 			void Run();
 			void Stop();
 
-			void AddObject(const WorldObject *object);
+			void AddTriangle(const TrianglePlane *triangle);
+			void AddSphere(const Sphere *sphere);
+			void AddRectangle(const RectangularPlane* rectangle);
 			void AddSun(const LightSource *sun);
 			void AddPointLight(const LightSource *pointLight);
+
+			// Loads a 3D object file from the filepath parameter.
+			// Uses the Assimp library to parse the file. See here for supported file types: http://assimp.sourceforge.net/main_features_formats.html.
+			void Add3DObject(const std::string &filePath);
 
 		private:
 			void RunLoop();

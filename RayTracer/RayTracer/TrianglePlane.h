@@ -4,22 +4,21 @@
 
 #include "Vector.h"
 #include "Windows.h"
-#include "WorldObject.h"
 #include <vector>
 
 namespace RayTracer
 {
-	class TrianglePlane : public WorldObject
+	class TrianglePlane
 	{
 		public:
 			TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, COLORREF color, float alpha);
 			TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, const cimg_library::CImg<unsigned char> &texture, float alpha, float uPos1, float vPos1, float uPos2, float vPos2, float uPos3, float vPos3);
 
-			virtual bool CheckCollision(const Vector &origin, const Vector &direction, float &distance, Vector &collisionPoint) const override;
-			virtual COLORREF GetColorAt(const Vector &point) const override;
-			virtual Vector GetNormalAt(const Vector &point, const  Vector &lookDir) const override;
-			virtual bool equals(const WorldObject &other) const override;
-			virtual float GetAlpha() const override;
+			bool CheckCollision(const Vector &origin, const Vector &direction, float &distance, Vector &collisionPoint) const;
+			COLORREF GetColorAt(const Vector &point) const;
+			Vector GetNormalAt(const Vector &point, const  Vector &lookDir) const;
+			bool equals(const TrianglePlane &other) const;
+			float GetAlpha() const;
 
 		private:
 			Vector m_v0;

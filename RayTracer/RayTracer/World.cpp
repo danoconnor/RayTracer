@@ -11,7 +11,17 @@ namespace RayTracer
 
 	World::~World()
 	{
-		for (const WorldObject *object : m_worldObjects)
+		for (const TrianglePlane *object : m_triangles)
+		{
+			delete object;
+		}
+
+		for (const Sphere *object : m_spheres)
+		{
+			delete object;
+		}
+
+		for (const RectangularPlane *object : m_rectangles)
 		{
 			delete object;
 		}
@@ -48,11 +58,23 @@ namespace RayTracer
 		{
 			threads[i].join();
 		}
+
+		//DrawWorldSubset(surface, 0, 480);
 	}
 
-	void World::AddWorldObject(const WorldObject *object)
+	void World::AddTriangle(const TrianglePlane *object)
 	{
-		m_worldObjects.push_back(object);
+		m_triangles.push_back(object);
+	}
+
+	void World::AddSphere(const Sphere *object)
+	{
+		m_spheres.push_back(object);
+	}
+
+	void World::AddRectangle(const RectangularPlane *object)
+	{
+		m_rectangles.push_back(object);
 	}
 
 	void World::AddSun(const LightSource *sun)
@@ -225,17 +247,11 @@ namespace RayTracer
 
 	COLORREF World::TraceRay(const Vector &ray)
 	{
+		// Check to see if the ray collides with any of our triangles, spheres, or rectangles.
 		std::vector<Collision> collisions;
-
-		for (const WorldObject *obj : m_worldObjects)
-		{
-			float collisionDist;
-			Vector cPoint;
-			if (obj->CheckCollision(m_eye, ray, collisionDist, cPoint))
-			{
-				collisions.push_back(Collision(obj, cPoint, collisionDist));
-			}
-		}
+		GetCollisions(m_triangles, ray, collisions);
+		GetCollisions(m_spheres, ray, collisions);
+		GetCollisions(m_rectangles, ray, collisions);
 
 		// Sort so that the closest points are at the front of the list
 		std::sort(collisions.begin(), collisions.end(), &World::SortByDistToEye);
@@ -246,115 +262,112 @@ namespace RayTracer
 		Uint8 totalGreen = 0;
 		Uint8 totalBlue = 0;
 
+		Uint8 collisionRed;
+		Uint8 collisionGreen;
+		Uint8 collisionBlue;
+		
+		int tempRed;
+		int tempGreen;
+		int tempBlue;
+
+		float dot;
+		COLORREF lightColor;
+		COLORREF objectColor;
+		BYTE objectColorRed;
+		BYTE objectColorGreen;
+		BYTE objectColorBlue;
+		float objectAlpha;
+
+		float xDiff;
+		float distToBulb;
+		float lightRayAlpha;
+		Vector lightDir;
+
 		for (const Collision &collision : collisions)
 		{
-			Uint8 red = 0;
-			Uint8 green = 0;
-			Uint8 blue = 0;
+			collisionRed = 0;
+			collisionGreen = 0;
+			collisionBlue = 0;
+
+			const Vector& normal = collision.objectNormal;
+			const Vector& collisionPoint = collision.collisionPoint;
+			objectColor = collision.objectColor;
+			objectColorRed = GetRValue(objectColor);
+			objectColorGreen = GetGValue(objectColor);
+			objectColorBlue = GetBValue(objectColor);
+			objectAlpha = collision.objectAlpha;
 
 			for (const LightSource *pointlight : m_pointLights)
 			{
-				Vector lightDir = pointlight->GetPosorDir() - collision.collisionPoint;
-				float xDiff = lightDir.m_x;
+				lightDir = pointlight->GetPosorDir() - collisionPoint;
+				xDiff = lightDir.m_x;
 				lightDir.normalize();
 
 				// Calculate T-value, not true distance
-				float distToBulb = xDiff / lightDir.m_x;
+				distToBulb = xDiff / lightDir.m_x;
 
-				float lightRayAlpha = 1.f;
-				for (const WorldObject *obj : m_worldObjects)
-				{
-					if (obj != collision.object)
-					{
-						float d;
-						Vector c;
-						bool hasCollision = obj->CheckCollision(collision.collisionPoint, lightDir, d, c);
-						if (hasCollision && d < distToBulb)
-						{
-							lightRayAlpha -= obj->GetAlpha();
-							if (lightRayAlpha <= 0.f)
-							{
-								break;
-							}
-						}
-					}
-				}
+				lightRayAlpha = 1.f;
+				TraceRayFromCollisionToPointLight(m_triangles, collision, lightDir, distToBulb, lightRayAlpha);
+				TraceRayFromCollisionToPointLight(m_spheres, collision, lightDir, distToBulb, lightRayAlpha);
+				TraceRayFromCollisionToPointLight(m_rectangles, collision, lightDir, distToBulb, lightRayAlpha);
 
 				if (lightRayAlpha > 0.f)
 				{
-					Vector normal = collision.object->GetNormalAt(collision.collisionPoint, ray);
-					float dot = normal.dot(lightDir);
+					dot = normal.dot(lightDir);
 
 					if (dot > 0)
 					{
-						COLORREF lightColor = pointlight->GetColor();
-						COLORREF objectColor = collision.object->GetColorAt(collision.collisionPoint);
+						lightColor = pointlight->GetColor();
 
-						int r = (int)(floor(GetRValue(lightColor) * GetRValue(objectColor) * dot * lightRayAlpha / (Color_Divide_Constant))) + red;
-						int g = (int)(floor(GetGValue(lightColor) * GetGValue(objectColor) * dot * lightRayAlpha / (Color_Divide_Constant))) + green;
-						int b = (int)(floor(GetBValue(lightColor) * GetBValue(objectColor) * dot * lightRayAlpha / (Color_Divide_Constant))) + blue;
+						tempRed = (int)(floor(GetRValue(lightColor) * objectColorRed * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionRed;
+						tempGreen = (int)(floor(GetGValue(lightColor) * objectColorGreen * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionGreen;
+						tempBlue = (int)(floor(GetBValue(lightColor) * objectColorBlue * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionBlue;
 
-						red = r > 255 ? 255 : r;
-						green = g > 255 ? 255 : g;
-						blue = b > 255 ? 255 : b;
+						collisionRed = tempRed > 255 ? 255 : tempRed;
+						collisionGreen = tempGreen > 255 ? 255 : tempGreen;
+						collisionBlue = tempBlue > 255 ? 255 : tempBlue;
 					}
 				}
 			}
 
 			for (const LightSource *sun : m_suns)
 			{
-				Vector lightDir = sun->GetPosorDir();
+				const Vector& sunDir = sun->GetPosorDir();
 
-				float sunRayAlpha = 1.f;
+				lightRayAlpha = 1.f;
+				TraceRayFromCollisionToSun(m_triangles, collision, sunDir, lightRayAlpha);
+				TraceRayFromCollisionToSun(m_spheres, collision, sunDir, lightRayAlpha);
+				TraceRayFromCollisionToSun(m_rectangles, collision, sunDir, lightRayAlpha);
 
-				for (const WorldObject *obj : m_worldObjects)
+				if (lightRayAlpha > 0.f)
 				{
-					if (obj != collision.object)
-					{
-						float d;
-						Vector c;
-						bool hasCollision = obj->CheckCollision(collision.collisionPoint, lightDir, d, c);
-						if (hasCollision)
-						{
-							sunRayAlpha -= obj->GetAlpha();
-							if (sunRayAlpha <= 0.f)
-							{
-								break;
-							}
-						}
-					}
-				}
-
-				if (sunRayAlpha > 0.f)
-				{
-					Vector normal = collision.object->GetNormalAt(collision.collisionPoint, ray);
-					float dot = normal.dot(lightDir);
+					const Vector& normal = collision.objectNormal;
+					float dot = normal.dot(sunDir);
 
 					if (dot > 0)
 					{
-						COLORREF lightColor = sun->GetColor();
-						COLORREF objectColor = collision.object->GetColorAt(collision.collisionPoint);
+						lightColor = sun->GetColor();
 
-						int r = (int)(floor(GetRValue(lightColor) * GetRValue(objectColor) * dot * sunRayAlpha / (Color_Divide_Constant))) + red;
-						int g = (int)(floor(GetGValue(lightColor) * GetGValue(objectColor) * dot * sunRayAlpha / (Color_Divide_Constant))) + green;
-						int b = (int)(floor(GetBValue(lightColor) * GetBValue(objectColor) * dot * sunRayAlpha / (Color_Divide_Constant))) + blue;
+						tempRed = (int)(floor(GetRValue(lightColor) * objectColorRed * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionRed;
+						tempGreen = (int)(floor(GetGValue(lightColor) * objectColorGreen * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionGreen;
+						tempBlue = (int)(floor(GetBValue(lightColor) * objectColorBlue * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionBlue;
 
-						red = r > 255 ? 255 : r;
-						green = g > 255 ? 255 : g;
-						blue = b > 255 ? 255 : b;
+						collisionRed = tempRed > 255 ? 255 : tempRed;
+						collisionGreen = tempGreen > 255 ? 255 : tempGreen;
+						collisionBlue = tempBlue > 255 ? 255 : tempBlue;
 					}
 				}
 			}
 
-			int r = (int)(floor(totalRed + (red * collision.object->GetAlpha() * eyeRayAlpha)));
-			int g = (int)(floor(totalGreen + (green * collision.object->GetAlpha() * eyeRayAlpha)));
-			int b = (int)(floor(totalBlue + (blue * collision.object->GetAlpha() * eyeRayAlpha)));
+			tempRed = (int)(floor(totalRed + (collisionRed * objectAlpha * eyeRayAlpha)));
+			tempGreen = (int)(floor(totalGreen + (collisionGreen * objectAlpha * eyeRayAlpha)));
+			tempBlue = (int)(floor(totalBlue + (collisionBlue * objectAlpha * eyeRayAlpha)));
 
-			totalRed = r > 255 ? 255 : r;
-			totalGreen = g > 255 ? 255 : g;
-			totalBlue = b > 255 ? 255 : b;
+			totalRed = tempRed > 255 ? 255 : tempRed;
+			totalGreen = tempGreen > 255 ? 255 : tempGreen;
+			totalBlue = tempBlue > 255 ? 255 : tempBlue;
 
-			eyeRayAlpha -= collision.object->GetAlpha();
+			eyeRayAlpha -= objectAlpha;
 			if (eyeRayAlpha <= 0.f)
 			{
 				break;
@@ -362,8 +375,92 @@ namespace RayTracer
 		}
 
 		return RGB(totalRed, totalGreen, totalBlue);
+	}
 
-		return COLORREF();
+	template <typename T>
+	void World::GetCollisions(const std::vector<const T*> objects, const Vector &ray, std::vector<Collision>& collisions)
+	{
+		float collisionDist;
+		Vector cPoint;
+
+		for (const T *obj : objects)
+		{
+			if (obj->CheckCollision(m_eye, ray, collisionDist, cPoint))
+			{
+				collisions.push_back(Collision(obj, 
+					cPoint, 
+					collisionDist,
+					obj->GetColorAt(cPoint),
+					obj->GetNormalAt(cPoint, ray),
+					obj->GetAlpha()));
+			}
+		}
+	}
+
+	template <typename T>
+	void World::TraceRayFromCollisionToPointLight(const std::vector<const T*> objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha)
+	{
+		if (lightRayAlpha <= 0.f)
+		{
+			return;
+		}
+
+		float dist;
+		Vector cp;
+		bool hasCollision;
+
+		const void *collisionObject = collision.object;
+		const Vector& collisionPoint = collision.collisionPoint;
+		float objectAlpha = collision.objectAlpha;
+
+		for (const T *obj : objects)
+		{
+			if (obj != collisionObject)
+			{
+				hasCollision = obj->CheckCollision(collisionPoint, lightDirection, dist, cp);
+				if (hasCollision && dist < distanceToLight)
+				{
+					lightRayAlpha -= objectAlpha;
+					if (lightRayAlpha <= 0.f)
+					{
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	template <typename T>
+	void World::TraceRayFromCollisionToSun(const std::vector<const T*> objects, const Collision &collision, const Vector &lightDirection, float &sunRayAlpha)
+	{
+		if (sunRayAlpha <= 0.f)
+		{
+			return;
+		}
+
+		float dist;
+		Vector cp;
+		bool hasCollision;
+
+		const void *collisionObject = collision.object;
+		const Vector& collisionPoint = collision.collisionPoint;
+		float objectAlpha = collision.objectAlpha;
+
+		for (const T *obj : objects)
+		{
+			if (obj != collisionObject)
+			{
+				hasCollision = obj->CheckCollision(collisionPoint, lightDirection, dist, cp);
+				if (hasCollision)
+				{
+					sunRayAlpha -= objectAlpha;
+					if (sunRayAlpha <= 0.f)
+					{
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	inline bool World::SortByDistToEye(const Collision &c1, const Collision &c2)

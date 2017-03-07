@@ -3,14 +3,131 @@
 
 namespace RayTracer
 {
-	RectangularPlane::RectangularPlane(Vector p1, Vector p2, Vector p3, Vector p4, COLORREF color, float alpha) : Plane(p1, p2, p3, color, alpha)
+	RectangularPlane::RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, COLORREF color, float alpha)
 	{
+		m_color = color;
+		m_texture = nullptr;
+		m_alpha = alpha;
+
+		float coefficients[4];
+		GetCoefficients(p1, p2, p3, coefficients);
+
+		SetCoefficients(coefficients[0], coefficients[1], coefficients[2], coefficients[3]);
 		SetMinAndMaxValues(p1, p2, p3, p4);
 	}
 
-	RectangularPlane::RectangularPlane(Vector p1, Vector p2, Vector p3, Vector p4, const cimg_library::CImg<unsigned char> &texture, float alpha, float repeatWidth, float repeatHeight) : Plane(p1, p2, p3, texture, alpha, repeatWidth, repeatHeight)
+	RectangularPlane::RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const cimg_library::CImg<unsigned char> &texture, float alpha, float repeatWidth, float repeatHeight)
 	{
+		m_color = RGB(0, 0, 0);
+		m_alpha = alpha;
+		m_texture = &texture;
+		m_repeatWidth = repeatWidth;
+		m_repeatHeight = repeatHeight;
+
+		float coefficients[4];
+		GetCoefficients(p1, p2, p3, coefficients);
+
+		SetCoefficients(coefficients[0], coefficients[1], coefficients[2], coefficients[3]);
 		SetMinAndMaxValues(p1, p2, p3, p4);
+	}
+
+	bool RectangularPlane::CheckCollision(const Vector &origin, const Vector &direction, float &distance, Vector &collisionPoint) const
+	{
+		float tDenominator = (m_a*direction.m_x + m_b*direction.m_y + m_c*direction.m_z);
+		if (tDenominator == 0)
+		{
+			return false;
+		}
+
+		float t = (-1.f*m_d - m_a*origin.m_x - m_b*origin.m_y - m_c*origin.m_z) / tDenominator;
+
+		if (t < 0)
+		{
+			return false;
+		}
+
+		distance = t;
+
+		collisionPoint.m_x = origin.m_x + distance*direction.m_x;
+		collisionPoint.m_y = origin.m_y + distance*direction.m_y;
+		collisionPoint.m_z = origin.m_z + distance*direction.m_z;
+
+		return true;
+	}
+
+	COLORREF RectangularPlane::GetColorAt(const Vector &point) const
+	{
+		if (m_texture)
+		{
+			float ratioX = point.m_x / m_repeatWidth;
+			int x = (int)floor((ratioX - floor(ratioX)) * m_texture->width());
+
+			float ratioY = point.m_y / m_repeatHeight;
+			int y = m_texture->height() - (int)floor((ratioY - floor(ratioY)) * m_texture->height()) - 1;
+
+			const UINT8 red = *(m_texture->data(x, y, 0, 0));
+			const UINT8 green = *(m_texture->data(x, y, 0, 1));
+			const UINT8 blue = *(m_texture->data(x, y, 0, 2));
+
+			return RGB(red, green, blue);
+		}
+		else
+		{
+			return m_color;
+		}
+	}
+
+	Vector RectangularPlane::GetNormalAt(const Vector &point, const  Vector &lookDir) const
+	{
+		Vector normal(m_a, m_b, m_c);
+		normal.normalize();
+
+		float dot = lookDir.dot(normal);
+		if (dot > 0)
+		{
+			normal.m_x *= -1;
+			normal.m_y *= -1;
+			normal.m_z *= -1;
+		}
+
+		return normal;
+	}
+
+	bool RectangularPlane::equals(const RectangularPlane &other) const
+	{
+		if ((void *)this == (void *)&other)
+		{
+			return true;
+		}
+
+		const RectangularPlane *otherPlane = static_cast<const RectangularPlane *>(&other);
+
+		if (otherPlane->m_a != m_a)
+		{
+			return false;
+		}
+
+		if (otherPlane->m_b != m_b)
+		{
+			return false;
+		}
+
+		if (otherPlane->m_c != m_c)
+		{
+			return false;
+		}
+
+		if (otherPlane->m_d != m_d)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	float RectangularPlane::GetAlpha() const
+	{
+		return m_alpha;
 	}
 
 	bool RectangularPlane::SortByX(const Vector &v1, const Vector &v2)
@@ -21,6 +138,29 @@ namespace RayTracer
 	bool RectangularPlane::SortByY(const Vector &v1, const Vector &v2)
 	{
 		return v1.m_y < v2.m_y;
+	}
+
+	void RectangularPlane::GetCoefficients(const Vector &p1, const Vector &p2, const Vector &p3, float(&coefficients)[4])
+	{
+		Vector v1 = p1 - p2;
+		Vector v2 = p1 - p3;
+
+		Vector normal = Vector::Cross(v1, v2);
+
+		float d = -1 * Vector::Dot(normal, p1);
+
+		coefficients[0] = normal.m_x;
+		coefficients[1] = normal.m_y;
+		coefficients[2] = normal.m_z;
+		coefficients[3] = d;
+	}
+
+	void RectangularPlane::SetCoefficients(float a, float b, float c, float d)
+	{
+		m_a = a;
+		m_b = b;
+		m_c = c;
+		m_d = d;
 	}
 
 	void RectangularPlane::SetMinAndMaxValues(Vector p1, Vector p2, Vector p3, Vector p4)

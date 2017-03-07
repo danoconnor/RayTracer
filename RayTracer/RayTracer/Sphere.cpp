@@ -8,14 +8,22 @@ namespace RayTracer
 	const float Sphere::m_Pi = 3.14159265358979323846f;
 	const float Sphere::m_Two_Pi = 6.28318530717958647692f;
 
-	Sphere::Sphere(Vector center, float radius, COLORREF color, float alpha) : WorldObject(color, nullptr, alpha)
+	Sphere::Sphere(Vector center, float radius, COLORREF color, float alpha)
 	{
+		m_color = color;
+		m_alpha = alpha;
+		m_texture = nullptr;
+
 		m_center = center;
 		m_radius = radius;
 	}
 
-	Sphere::Sphere(Vector center, float radius, const cimg_library::CImg<unsigned char> &texture, float alpha) : WorldObject(RGB(0, 0, 0), &texture, alpha)
+	Sphere::Sphere(Vector center, float radius, const cimg_library::CImg<unsigned char> &texture, float alpha)
 	{
+		m_color = RGB(0, 0, 0);
+		m_alpha = alpha;
+		m_texture = &texture;
+
 		m_center = center;
 		m_radius = radius;
 	}
@@ -100,29 +108,22 @@ namespace RayTracer
 		return normal;
 	}
 
-	bool Sphere::equals(const WorldObject &other) const
+	bool Sphere::equals(const Sphere &other) const
 	{
 		if ((void *)this == (void *)&other)
 		{
 			return true;
 		}
-
-		const Sphere *otherSphere = static_cast<const Sphere *>(&other);
-
-		if (!otherSphere)
+		
+		if (other.m_center != m_center)
 		{
 			return false;
 		}
-
-		if (otherSphere->m_center != m_center)
+		else if (other.m_radius != m_radius)
 		{
 			return false;
 		}
-		else if (otherSphere->m_radius != m_radius)
-		{
-			return false;
-		}
-		else if (otherSphere->m_color != m_color)
+		else if (other.m_color != m_color)
 		{
 			return false;
 		}

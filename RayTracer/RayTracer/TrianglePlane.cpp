@@ -6,7 +6,7 @@
 
 namespace RayTracer
 {
-	TrianglePlane::TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, COLORREF color, float alpha) : WorldObject(color, nullptr, alpha)
+	TrianglePlane::TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, COLORREF color, float alpha)
 	{
 		m_v0 = v1;
 		m_v1 = v2;
@@ -14,9 +14,13 @@ namespace RayTracer
 
 		m_edge1 = m_v1 - m_v0;
 		m_edge2 = m_v2 - m_v0;
+
+		m_color = color;
+		m_alpha = alpha;
+		m_texture = nullptr;
 	}
 
-	TrianglePlane::TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, const cimg_library::CImg<unsigned char> &texture, float alpha, float uPos1, float vPos1, float uPos2, float vPos2, float uPos3, float vPos3) : WorldObject(RGB(0, 0, 0), &texture, alpha)
+	TrianglePlane::TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, const cimg_library::CImg<unsigned char> &texture, float alpha, float uPos1, float vPos1, float uPos2, float vPos2, float uPos3, float vPos3)
 	{
 		m_v0 = v1;
 		m_v1 = v2;
@@ -33,6 +37,10 @@ namespace RayTracer
 
 		m_edge1 = m_v1 - m_v0;
 		m_edge2 = m_v2 - m_v0;
+
+		m_color = RGB(0, 0, 0);
+		m_alpha = alpha;
+		m_texture = &texture;
 	}
 
 	// Based on the Moller-Trumbore "Fast, Minimum Storage Ray/Triangle Intersection"
@@ -121,7 +129,7 @@ namespace RayTracer
 		return normal;
 	}
 
-	bool TrianglePlane::equals(const WorldObject &other) const
+	bool TrianglePlane::equals(const TrianglePlane &other) const
 	{
 		if ((void *)this == (void *)&other)
 		{

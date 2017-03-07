@@ -3,23 +3,28 @@
 
 #include "Vector.h"
 #include "Windows.h"
-#include "WorldObject.h"
 
 namespace RayTracer
 {
-	class Sphere : public WorldObject
+	class Sphere
 	{
 		public:
 			Sphere(Vector center, float radius, COLORREF color, float alpha);
 			Sphere(Vector center, float radius, const cimg_library::CImg<unsigned char> &texture, float alpha);
 
-			virtual bool CheckCollision(const Vector &origin, const Vector &direction, float &distance, Vector &collisionPoint) const override;
-			virtual COLORREF GetColorAt(const Vector &point) const override;
-			virtual Vector GetNormalAt(const Vector &point, const  Vector &lookDir) const override;
-			virtual bool equals(const WorldObject &other) const override;
-			virtual float GetAlpha() const override;
+			bool CheckCollision(const Vector &origin, const Vector &direction, float &distance, Vector &collisionPoint) const;
+			COLORREF GetColorAt(const Vector &point) const;
+			Vector GetNormalAt(const Vector &point, const  Vector &lookDir) const;
+			bool equals(const Sphere &other) const;
+			float GetAlpha() const;
 
 		private:
+			const cimg_library::CImg<unsigned char> *m_texture;
+			COLORREF m_color;
+
+			// Transparency of object. Ranges from 1 = completely opaque to 0 = completely transparent.
+			float m_alpha;
+
 			Vector m_center;
 			float m_radius;
 

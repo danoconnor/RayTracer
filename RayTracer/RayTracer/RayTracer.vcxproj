@@ -157,7 +157,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="LightSource.h" />
-    <ClInclude Include="Plane.h" />
     <ClInclude Include="RayTracer.h" />
     <ClInclude Include="RectangularPlane.h" />
     <ClInclude Include="Sphere.h" />
@@ -167,12 +166,10 @@
     <ClInclude Include="UtilFunctions.h" />
     <ClInclude Include="Vector.h" />
     <ClInclude Include="World.h" />
-    <ClInclude Include="WorldObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LightSource.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Plane.cpp" />
     <ClCompile Include="RayTracer.cpp" />
     <ClCompile Include="RectangularPlane.cpp" />
     <ClCompile Include="Sphere.cpp" />
@@ -186,7 +183,6 @@
     <ClCompile Include="UtilFunctions.cpp" />
     <ClCompile Include="Vector.cpp" />
     <ClCompile Include="World.cpp" />
-    <ClCompile Include="WorldObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
