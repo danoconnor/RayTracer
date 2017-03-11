@@ -89,7 +89,7 @@ void AddTestObjectsToWorld(RayTracer::RayTracer& tracer)
 	RayTracer::LightSource *sun4 = new RayTracer::LightSource(RayTracer::Vector(-1, 1, 0), RGB(0xbb, 0xbb, 0xbb));
 	tracer.AddSun(sun4);
 	
-	tracer.Add3DObject("Textures/TRex.stl");
+	tracer.Add3DObject("Textures/TRex.stl", RayTracer::Vector(0, 0, 0), 0, 0, 0);
 }
 
 int _tmain(int argc, _TCHAR *argv[])

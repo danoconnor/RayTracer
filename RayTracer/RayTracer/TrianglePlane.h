@@ -19,6 +19,7 @@ namespace RayTracer
 			Vector GetNormalAt(const Vector &point, const  Vector &lookDir) const;
 			bool equals(const TrianglePlane &other) const;
 			float GetAlpha() const;
+			std::vector<Vector> GetPoints();
 
 		private:
 			Vector m_v0;

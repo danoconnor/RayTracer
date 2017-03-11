@@ -160,4 +160,14 @@ namespace RayTracer
 	{
 		return m_alpha;
 	}
+
+	std::vector<Vector> TrianglePlane::GetPoints()
+	{
+		std::vector<Vector> points;
+		points.push_back(m_v0);
+		points.push_back(m_v1);
+		points.push_back(m_v2);
+
+		return points;
+	}
 }

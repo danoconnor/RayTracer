@@ -24,6 +24,9 @@ namespace RayTracer
 			// Uses the Assimp library to parse the file. See here for supported file types: http://assimp.sourceforge.net/main_features_formats.html.
 			void Add3DObject(const std::string &filePath);
 
+			// Angles are in degrees
+			void Add3DObject(const std::string &filePath, const Vector &translation, float rotationX, float rotationY, float rotationZ);
+
 		private:
 			void RunLoop();
 
