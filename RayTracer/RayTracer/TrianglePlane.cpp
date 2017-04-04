@@ -6,7 +6,7 @@
 
 namespace RayTracer
 {
-	TrianglePlane::TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, COLORREF color, float alpha)
+	TrianglePlane::TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, COLORREF color, float alpha, float refraction, float reflectivity)
 	{
 		m_v0 = v1;
 		m_v1 = v2;
@@ -17,10 +17,12 @@ namespace RayTracer
 
 		m_color = color;
 		m_alpha = alpha;
+		m_reflectivity = reflectivity;
+		m_refraction = refraction;
 		m_texture = nullptr;
 	}
 
-	TrianglePlane::TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, const cimg_library::CImg<unsigned char> &texture, float alpha, float uPos1, float vPos1, float uPos2, float vPos2, float uPos3, float vPos3)
+	TrianglePlane::TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, const cimg_library::CImg<unsigned char> &texture, float alpha, float refraction, float reflectivity, float uPos1, float vPos1, float uPos2, float vPos2, float uPos3, float vPos3)
 	{
 		m_v0 = v1;
 		m_v1 = v2;
@@ -40,6 +42,8 @@ namespace RayTracer
 
 		m_color = RGB(0, 0, 0);
 		m_alpha = alpha;
+		m_reflectivity = reflectivity;
+		m_refraction = refraction;
 		m_texture = &texture;
 	}
 
@@ -159,6 +163,16 @@ namespace RayTracer
 	float TrianglePlane::GetAlpha() const
 	{
 		return m_alpha;
+	}
+
+	float TrianglePlane::GetRefraction() const
+	{
+		return m_refraction;
+	}
+
+	float TrianglePlane::GetReflectivity() const
+	{
+		return m_reflectivity;
 	}
 
 	std::vector<Vector> TrianglePlane::GetPoints()

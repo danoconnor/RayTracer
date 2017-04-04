@@ -3,11 +3,13 @@
 
 namespace RayTracer
 {
-	RectangularPlane::RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, COLORREF color, float alpha)
+	RectangularPlane::RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, COLORREF color, float alpha, float refraction, float reflectivity)
 	{
 		m_color = color;
 		m_texture = nullptr;
 		m_alpha = alpha;
+		m_reflectivity = reflectivity;
+		m_refraction = refraction;
 
 		float coefficients[4];
 		GetCoefficients(p1, p2, p3, coefficients);
@@ -16,10 +18,12 @@ namespace RayTracer
 		SetMinAndMaxValues(p1, p2, p3, p4);
 	}
 
-	RectangularPlane::RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const cimg_library::CImg<unsigned char> &texture, float alpha, float repeatWidth, float repeatHeight)
+	RectangularPlane::RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const cimg_library::CImg<unsigned char> &texture, float alpha, float refraction, float reflectivity, float repeatWidth, float repeatHeight)
 	{
 		m_color = RGB(0, 0, 0);
 		m_alpha = alpha;
+		m_reflectivity = reflectivity;
+		m_refraction = refraction;
 		m_texture = &texture;
 		m_repeatWidth = repeatWidth;
 		m_repeatHeight = repeatHeight;
@@ -52,7 +56,8 @@ namespace RayTracer
 		collisionPoint.m_y = origin.m_y + distance*direction.m_y;
 		collisionPoint.m_z = origin.m_z + distance*direction.m_z;
 
-		return true;
+		// See if the collision point falls within the rectangle bounds
+		return (collisionPoint.m_x >= m_minX && collisionPoint.m_x <= m_maxX) && (collisionPoint.m_y >= m_minY && collisionPoint.m_y <= m_maxY);
 	}
 
 	COLORREF RectangularPlane::GetColorAt(const Vector &point) const
@@ -128,6 +133,16 @@ namespace RayTracer
 	float RectangularPlane::GetAlpha() const
 	{
 		return m_alpha;
+	}
+
+	float RectangularPlane::GetRefraction() const
+	{
+		return m_refraction;
+	}
+
+	float RectangularPlane::GetReflectivity() const
+	{
+		return m_reflectivity;
 	}
 
 	bool RectangularPlane::SortByX(const Vector &v1, const Vector &v2)

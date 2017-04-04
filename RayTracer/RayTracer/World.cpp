@@ -2,6 +2,7 @@
 #include "World.h"
 
 #define NUM_RAY_TRACE_THREADS 8
+#define MAX_REFLECTION_RECURSION 3
 
 namespace RayTracer
 {
@@ -58,8 +59,6 @@ namespace RayTracer
 		{
 			threads[i].join();
 		}
-
-		//DrawWorldSubset(surface, 0, 480);
 	}
 
 	void World::AddTriangle(const TrianglePlane *object)
@@ -245,13 +244,19 @@ namespace RayTracer
 		return m_right;
 	}
 
-	COLORREF World::TraceRay(const Vector &ray)
+	COLORREF World::TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, Uint8 reflectionRecursion)
 	{
+		// Don't want to get stuck in an infinite loop of reflection, so break once we get to a certain depth.
+		if (reflectionRecursion >= MAX_REFLECTION_RECURSION)
+		{
+			return RGB(0, 0, 0);
+		}
+
 		// Check to see if the ray collides with any of our triangles, spheres, or rectangles.
 		std::vector<Collision> collisions;
-		GetCollisions(m_triangles, ray, collisions);
-		GetCollisions(m_spheres, ray, collisions);
-		GetCollisions(m_rectangles, ray, collisions);
+		GetCollisions(rayOrigin, m_triangles, ray, collisions);
+		GetCollisions(rayOrigin, m_spheres, ray, collisions);
+		GetCollisions(rayOrigin, m_rectangles, ray, collisions);
 
 		// Sort so that the closest points are at the front of the list
 		std::sort(collisions.begin(), collisions.end(), &World::SortByDistToEye);
@@ -285,6 +290,12 @@ namespace RayTracer
 
 		for (const Collision &collision : collisions)
 		{
+			// When reflecting, ignore the object that is currently reflecting the ray.
+			if (collision.object == originObject)
+			{
+				continue;
+			}
+
 			collisionRed = 0;
 			collisionGreen = 0;
 			collisionBlue = 0;
@@ -296,6 +307,25 @@ namespace RayTracer
 			objectColorGreen = GetGValue(objectColor);
 			objectColorBlue = GetBValue(objectColor);
 			objectAlpha = collision.objectAlpha;
+
+			// If this object is reflective, then we need to get the reflected color
+			if (collision.objectReflectivity > 0.f)
+			{
+				// Calculate the reflection vector
+				// reflectionVector = ray - 2*(ray dot normal)*normal
+				Vector twoRayProjN = collision.objectNormal;
+				twoRayProjN.scalarMult(2 * Vector::Dot(ray, collision.objectNormal));
+				Vector reflectionVector = ray - twoRayProjN;
+
+				COLORREF reflectedColor = TraceRay(collision.collisionPoint, reflectionVector, collision.object, reflectionRecursion + 1);
+
+				// Calculate the true color of the object based on the base color and reflected color
+				float reflectiveAlpha = collision.objectReflectivity;
+				float baseColorAlpha = (1 - reflectiveAlpha);
+				objectColorRed = (objectColorRed*baseColorAlpha + GetRValue(reflectedColor)*reflectiveAlpha);
+				objectColorGreen = (objectColorGreen*baseColorAlpha + GetGValue(reflectedColor)*reflectiveAlpha);
+				objectColorBlue = (objectColorBlue*baseColorAlpha + GetBValue(reflectedColor)*reflectiveAlpha);
+			}
 
 			for (const LightSource *pointlight : m_pointLights)
 			{
@@ -378,21 +408,22 @@ namespace RayTracer
 	}
 
 	template <typename T>
-	void World::GetCollisions(const std::vector<const T*> objects, const Vector &ray, std::vector<Collision>& collisions)
+	void World::GetCollisions(const Vector &rayOrigin, const std::vector<const T*> objects, const Vector &ray, std::vector<Collision>& collisions)
 	{
 		float collisionDist;
 		Vector cPoint;
 
 		for (const T *obj : objects)
 		{
-			if (obj->CheckCollision(m_eye, ray, collisionDist, cPoint))
+			if (obj->CheckCollision(rayOrigin, ray, collisionDist, cPoint))
 			{
 				collisions.push_back(Collision(obj, 
 					cPoint, 
 					collisionDist,
 					obj->GetColorAt(cPoint),
 					obj->GetNormalAt(cPoint, ray),
-					obj->GetAlpha()));
+					obj->GetAlpha(),
+					obj->GetReflectivity()));
 			}
 		}
 	}
@@ -490,7 +521,7 @@ namespace RayTracer
 
 				ray.normalize();
 
-				COLORREF color = TraceRay(ray);
+				COLORREF color = TraceRay(m_eye, ray, nullptr, 0);
 				SetSurfacePixel(surface, x, y, GetRValue(color), GetGValue(color), GetBValue(color));
 			}
 		}

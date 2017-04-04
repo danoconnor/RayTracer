@@ -47,7 +47,7 @@ namespace RayTracer
 		private:
 			struct Collision
 			{
-				Collision(const void *obj, const Vector &point, float dist, COLORREF color, const Vector &normal, float alpha)
+				Collision(const void *obj, const Vector &point, float dist, COLORREF color, const Vector &normal, float alpha, float reflectivity)
 				{
 					object = obj;
 					collisionPoint = point;
@@ -55,6 +55,7 @@ namespace RayTracer
 					objectColor = color;
 					objectNormal = normal;
 					objectAlpha = alpha;
+					objectReflectivity = reflectivity;
 				}
 
 				// Reference to the object that was collided with. This is used during lighting to make sure that an object doesn't cast a shadow on itself.
@@ -74,15 +75,21 @@ namespace RayTracer
 
 				// The alpha of the object that was collided with.
 				float objectAlpha;
+
+				// The reflectivity of the object that was collided with
+				float objectReflectivity;
 			};
 
 			static inline bool SortByDistToEye(const Collision &c1, const Collision &c2);
 
-			COLORREF TraceRay(const Vector &ray);
+			// Trace ray starting at the origin point and going in the ray direction. 
+			// originObject is used in reflection as the object that the ray originates from. It will be null for rays originating at the eye point.
+			// reflectionRecursion is to make sure that we don't get stuck in an infinite loop of reflections. It will start at 0 for rays coming from the eye and gets incremented everytime the ray is reflected.
+			COLORREF TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, Uint8 reflectionRecursion);
 
 			// Appends all collisions between the ray and the collection of objects to the collisions vector.
 			template <typename T> 
-			void GetCollisions(const std::vector<const T*> objects, const Vector &ray, std::vector<Collision> &collisions);
+			void GetCollisions(const Vector &rayOrigin, const std::vector<const T*> objects, const Vector &ray, std::vector<Collision> &collisions);
 
 			// Traces a ray from the collision point to a given point light. It updates the lightRayAlpha parameter.
 			template <typename T>

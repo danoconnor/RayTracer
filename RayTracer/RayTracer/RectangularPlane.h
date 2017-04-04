@@ -8,14 +8,19 @@ namespace RayTracer
 	{
 		public:
 			// These constructors take four points that lie on the plane
-			RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, COLORREF color, float alpha);
-			RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const cimg_library::CImg<unsigned char> &texture, float alpha, float repeatWidth, float repeatHeight);
+			RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, COLORREF color, float alpha, float refraction, float reflectivity);
+			RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const cimg_library::CImg<unsigned char> &texture, float alpha, float refraction, float reflectivity, float repeatWidth, float repeatHeight);
 			
 			bool CheckCollision(const Vector &origin, const Vector &direction, float &distance, Vector &collisionPoint) const;
 			COLORREF GetColorAt(const Vector &point) const;
+
+			// Returns the normalized normal vector at the given point
 			Vector GetNormalAt(const Vector &point, const  Vector &lookDir) const;
+
 			bool equals(const RectangularPlane &other) const;
 			float GetAlpha() const;
+			float GetRefraction() const;
+			float GetReflectivity() const;
 
 		private:
 			const cimg_library::CImg<unsigned char> *m_texture;
@@ -23,6 +28,12 @@ namespace RayTracer
 
 			// Transparency of object. Ranges from 1 = completely opaque to 0 = completely transparent.
 			float m_alpha;
+
+			// Reflectivity of object. Ranges from 1.0 = completely reflective to 0 = completely unreflective.
+			float m_reflectivity;
+
+			// Refracive index of object. Ranges from 2.0 = max refraction to 1.0 = no refraction.
+			float m_refraction;
 
 			float m_a;
 			float m_b;

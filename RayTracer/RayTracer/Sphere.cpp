@@ -8,20 +8,24 @@ namespace RayTracer
 	const float Sphere::m_Pi = 3.14159265358979323846f;
 	const float Sphere::m_Two_Pi = 6.28318530717958647692f;
 
-	Sphere::Sphere(Vector center, float radius, COLORREF color, float alpha)
+	Sphere::Sphere(Vector center, float radius, COLORREF color, float alpha, float refraction, float reflectivity)
 	{
 		m_color = color;
 		m_alpha = alpha;
+		m_reflectivity = reflectivity;
+		m_refraction = refraction;
 		m_texture = nullptr;
 
 		m_center = center;
 		m_radius = radius;
 	}
 
-	Sphere::Sphere(Vector center, float radius, const cimg_library::CImg<unsigned char> &texture, float alpha)
+	Sphere::Sphere(Vector center, float radius, const cimg_library::CImg<unsigned char> &texture, float alpha, float refraction, float reflectivity)
 	{
 		m_color = RGB(0, 0, 0);
 		m_alpha = alpha;
+		m_reflectivity = reflectivity;
+		m_refraction = refraction;
 		m_texture = &texture;
 
 		m_center = center;
@@ -134,5 +138,15 @@ namespace RayTracer
 	float Sphere::GetAlpha() const
 	{
 		return m_alpha;
+	}
+
+	float Sphere::GetRefraction() const
+	{
+		return m_refraction;
+	}
+
+	float Sphere::GetReflectivity() const
+	{
+		return m_reflectivity;
 	}
 }

@@ -20,8 +20,8 @@ RT::RayTracer::RayTracer()
 	m_surface = SDL_GetWindowSurface(m_window);
 
 	m_world = new World();
-	m_world->SetEye(Vector(-230, 350, 1000));
-	m_world->SetForward(Vector(0.7f, -0.1f, -1.f));
+	//m_world->SetEye(Vector(-230, 350, 1000));
+	//m_world->SetForward(Vector(-1, 0, -1.f));
 
 	m_isRunning = false;
 	m_outputFPS = true;
@@ -121,7 +121,9 @@ void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &trans
 					RT::Vector(vertex2.x, vertex2.y, vertex2.z),
 					RT::Vector(vertex3.x, vertex3.y, vertex3.z),
 					triangleColor,
-					1.f));
+					1.f,
+					1.f,
+					0.f));
 			}
 		}
 
@@ -200,7 +202,9 @@ void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &trans
 				p2,
 				p3,
 				triangleColor,
-				triangle.GetAlpha()
+				triangle.GetAlpha(),
+				triangle.GetRefraction(),
+				triangle.GetReflectivity()
 			));
 		}
 	}

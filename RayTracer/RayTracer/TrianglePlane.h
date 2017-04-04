@@ -11,14 +11,19 @@ namespace RayTracer
 	class TrianglePlane
 	{
 		public:
-			TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, COLORREF color, float alpha);
-			TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, const cimg_library::CImg<unsigned char> &texture, float alpha, float uPos1, float vPos1, float uPos2, float vPos2, float uPos3, float vPos3);
+			TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, COLORREF color, float alpha, float refraction, float reflectivity);
+			TrianglePlane(const Vector &v1, const Vector &v2, const Vector &v3, const cimg_library::CImg<unsigned char> &texture, float alpha, float refraction, float reflectivity, float uPos1, float vPos1, float uPos2, float vPos2, float uPos3, float vPos3);
 
 			bool CheckCollision(const Vector &origin, const Vector &direction, float &distance, Vector &collisionPoint) const;
 			COLORREF GetColorAt(const Vector &point) const;
-			Vector GetNormalAt(const Vector &point, const  Vector &lookDir) const;
+
+			// Returns the normalized normal vector at the given point
+			Vector GetNormalAt(const Vector &point, const Vector &lookDir) const;
+
 			bool equals(const TrianglePlane &other) const;
 			float GetAlpha() const;
+			float GetRefraction() const;
+			float GetReflectivity() const;
 			std::vector<Vector> GetPoints();
 
 		private:
@@ -46,5 +51,11 @@ namespace RayTracer
 
 			// Transparency of object. Ranges from 255 = completely opaque to 0 = completely transparent.
 			float m_alpha;
+
+			// Reflectivity of object. Ranges from 1.0 = completely reflective to 0 = completely unreflective.
+			float m_reflectivity;
+
+			// Refracive index of object. Ranges from 2.0 = max refraction to 1.0 = no refraction.
+			float m_refraction;
 	};
 }

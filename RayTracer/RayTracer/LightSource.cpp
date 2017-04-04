@@ -6,7 +6,7 @@ namespace RayTracer
 	LightSource::LightSource(Vector posOrDir)
 	{
 		m_posOrDir = posOrDir;
-		m_posOrDir.normalize();
+		//m_posOrDir.normalize();
 
 		m_color = RGB(0xff, 0xff, 0xff);
 	}
