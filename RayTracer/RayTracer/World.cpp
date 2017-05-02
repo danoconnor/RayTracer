@@ -3,6 +3,7 @@
 
 #define NUM_RAY_TRACE_THREADS 8
 #define MAX_REFLECTION_RECURSION 3
+#define ZERO_WITH_MARGIN_OF_ERROR 0.001
 
 namespace RayTracer
 {
@@ -244,7 +245,8 @@ namespace RayTracer
 		return m_right;
 	}
 
-	COLORREF World::TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, Uint8 reflectionRecursion)
+	// TODO - originObject is currently not being used but could be useful when we implement refraction so I'll leave it for now.
+	COLORREF World::TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, float eyeRayAlpha, Uint8 reflectionRecursion)
 	{
 		// Don't want to get stuck in an infinite loop of reflection, so break once we get to a certain depth.
 		if (reflectionRecursion >= MAX_REFLECTION_RECURSION)
@@ -253,183 +255,164 @@ namespace RayTracer
 		}
 
 		// Check to see if the ray collides with any of our triangles, spheres, or rectangles.
-		std::vector<Collision> collisions;
-		GetCollisions(rayOrigin, m_triangles, ray, collisions);
-		GetCollisions(rayOrigin, m_spheres, ray, collisions);
-		GetCollisions(rayOrigin, m_rectangles, ray, collisions);
+		Collision collision;
+		collision.distance = std::numeric_limits<float>::infinity();
 
-		// Sort so that the closest points are at the front of the list
-		std::sort(collisions.begin(), collisions.end(), &World::SortByDistToEye);
+		bool hasCollision = GetClosestCollision(rayOrigin, m_triangles, originObject, ray, collision);
+		hasCollision |= GetClosestCollision(rayOrigin, m_spheres, originObject, ray, collision);
+		hasCollision |= GetClosestCollision(rayOrigin, m_rectangles, originObject, ray, collision);
 
-		float eyeRayAlpha = 1;
-
-		Uint8 totalRed = 0;
-		Uint8 totalGreen = 0;
-		Uint8 totalBlue = 0;
-
-		Uint8 collisionRed;
-		Uint8 collisionGreen;
-		Uint8 collisionBlue;
+		if (!hasCollision)
+		{
+			return RGB(0, 0, 0);
+		}
 		
-		int tempRed;
-		int tempGreen;
-		int tempBlue;
+		// These need to be uint32 for now to handle any overflow while calculating the color. They will eventually be fit into uint8's for the final return value.
+		unsigned int objectColorRed = GetRValue(collision.objectColor);
+		unsigned int objectColorGreen = GetGValue(collision.objectColor);
+		unsigned int objectColorBlue = GetBValue(collision.objectColor);
 
+		// If this object is not fully opaque, then we need to shoot another ray to see what's behind it
+		if (collision.objectAlpha < 1.f)
+		{
+			// TODO - calculate refraction direction
+			float newEyeRayAlpha = eyeRayAlpha - collision.objectAlpha;
+			if (newEyeRayAlpha > 0.f)
+			{
+				COLORREF transparentColor = TraceRay(collision.collisionPoint, ray, collision.object, newEyeRayAlpha, reflectionRecursion);
+
+				objectColorRed = (unsigned int)floor((objectColorRed * collision.objectAlpha) + (GetRValue(transparentColor) * (1 - collision.objectAlpha)));
+				objectColorGreen = (unsigned int)floor((objectColorGreen * collision.objectAlpha) + (GetGValue(transparentColor) * (1 - collision.objectAlpha)));
+				objectColorBlue = (unsigned int)floor((objectColorBlue * collision.objectAlpha) + (GetBValue(transparentColor) * (1 - collision.objectAlpha)));
+			}
+		}
+
+		// If this object is reflective, then we need to get the reflected color
+		if (collision.objectReflectivity > 0.f)
+		{
+			// Calculate the reflection vector
+			// reflectionVector = ray - 2*(ray dot normal)*normal
+			Vector twoRayProjN = collision.objectNormal;
+			twoRayProjN.scalarMult(2 * Vector::Dot(ray, collision.objectNormal));
+			Vector reflectionVector = ray - twoRayProjN;
+
+			COLORREF reflectedColor = TraceRay(collision.collisionPoint, reflectionVector, collision.object, 1.f, reflectionRecursion + 1);
+
+			objectColorRed = (unsigned int)floor(((1 - collision.objectReflectivity) * objectColorRed) + (collision.objectReflectivity * GetRValue(reflectedColor)));
+			objectColorGreen = (unsigned int)floor(((1 - collision.objectReflectivity) * objectColorGreen) + (collision.objectReflectivity * GetGValue(reflectedColor)));
+			objectColorBlue = (unsigned int)floor(((1 - collision.objectReflectivity) * objectColorBlue) + (collision.objectReflectivity * GetBValue(reflectedColor)));
+		}
+
+		// Forward declare these so we don't have to reallocate the memory on every iteration of the loops
 		float dot;
-		COLORREF lightColor;
-		COLORREF objectColor;
-		BYTE objectColorRed;
-		BYTE objectColorGreen;
-		BYTE objectColorBlue;
-		float objectAlpha;
-
 		float xDiff;
 		float distToBulb;
 		float lightRayAlpha;
 		Vector lightDir;
+		COLORREF lightColor;
+		const Vector& normal = collision.objectNormal;
 
-		for (const Collision &collision : collisions)
+		// These represent the final RGB values, taking into consideration the lighting.
+		// They need to be uint32 for now to handle any potential overflow, but will be fit into uint8's for the final return value.
+		unsigned int tempRed = 0;
+		unsigned int tempGreen = 0;
+		unsigned int tempBlue = 0;
+		
+		for (const LightSource *pointlight : m_pointLights)
 		{
-			// When reflecting, ignore the object that is currently reflecting the ray.
-			if (collision.object == originObject)
+			lightDir = pointlight->GetPosorDir() - collision.collisionPoint;
+			xDiff = lightDir.m_x;
+			lightDir.normalize();
+
+			// Calculate T-value, not true distance
+			distToBulb = xDiff / lightDir.m_x;
+
+			lightRayAlpha = 1.f;
+			TraceRayFromCollisionToPointLight(m_triangles, collision, lightDir, distToBulb, lightRayAlpha);
+			TraceRayFromCollisionToPointLight(m_spheres, collision, lightDir, distToBulb, lightRayAlpha);
+			TraceRayFromCollisionToPointLight(m_rectangles, collision, lightDir, distToBulb, lightRayAlpha);
+
+			if (lightRayAlpha > 0.f)
 			{
-				continue;
-			}
+				dot = normal.dot(lightDir);
 
-			collisionRed = 0;
-			collisionGreen = 0;
-			collisionBlue = 0;
-
-			const Vector& normal = collision.objectNormal;
-			const Vector& collisionPoint = collision.collisionPoint;
-			objectColor = collision.objectColor;
-			objectColorRed = GetRValue(objectColor);
-			objectColorGreen = GetGValue(objectColor);
-			objectColorBlue = GetBValue(objectColor);
-			objectAlpha = collision.objectAlpha;
-
-			// If this object is reflective, then we need to get the reflected color
-			if (collision.objectReflectivity > 0.f)
-			{
-				// Calculate the reflection vector
-				// reflectionVector = ray - 2*(ray dot normal)*normal
-				Vector twoRayProjN = collision.objectNormal;
-				twoRayProjN.scalarMult(2 * Vector::Dot(ray, collision.objectNormal));
-				Vector reflectionVector = ray - twoRayProjN;
-
-				COLORREF reflectedColor = TraceRay(collision.collisionPoint, reflectionVector, collision.object, reflectionRecursion + 1);
-
-				// Calculate the true color of the object based on the base color and reflected color
-				float reflectiveAlpha = collision.objectReflectivity;
-				float baseColorAlpha = (1 - reflectiveAlpha);
-				objectColorRed = (objectColorRed*baseColorAlpha + GetRValue(reflectedColor)*reflectiveAlpha);
-				objectColorGreen = (objectColorGreen*baseColorAlpha + GetGValue(reflectedColor)*reflectiveAlpha);
-				objectColorBlue = (objectColorBlue*baseColorAlpha + GetBValue(reflectedColor)*reflectiveAlpha);
-			}
-
-			for (const LightSource *pointlight : m_pointLights)
-			{
-				lightDir = pointlight->GetPosorDir() - collisionPoint;
-				xDiff = lightDir.m_x;
-				lightDir.normalize();
-
-				// Calculate T-value, not true distance
-				distToBulb = xDiff / lightDir.m_x;
-
-				lightRayAlpha = 1.f;
-				TraceRayFromCollisionToPointLight(m_triangles, collision, lightDir, distToBulb, lightRayAlpha);
-				TraceRayFromCollisionToPointLight(m_spheres, collision, lightDir, distToBulb, lightRayAlpha);
-				TraceRayFromCollisionToPointLight(m_rectangles, collision, lightDir, distToBulb, lightRayAlpha);
-
-				if (lightRayAlpha > 0.f)
+				if (dot > 0)
 				{
-					dot = normal.dot(lightDir);
+					lightColor = pointlight->GetColor();
 
-					if (dot > 0)
-					{
-						lightColor = pointlight->GetColor();
-
-						tempRed = (int)(floor(GetRValue(lightColor) * objectColorRed * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionRed;
-						tempGreen = (int)(floor(GetGValue(lightColor) * objectColorGreen * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionGreen;
-						tempBlue = (int)(floor(GetBValue(lightColor) * objectColorBlue * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionBlue;
-
-						collisionRed = tempRed > 255 ? 255 : tempRed;
-						collisionGreen = tempGreen > 255 ? 255 : tempGreen;
-						collisionBlue = tempBlue > 255 ? 255 : tempBlue;
-					}
+					tempRed += (int)(floor(GetRValue(lightColor) * objectColorRed * dot * lightRayAlpha / Color_Divide_Constant));
+					tempGreen += (int)(floor(GetGValue(lightColor) * objectColorGreen * dot * lightRayAlpha / Color_Divide_Constant));
+					tempBlue += (int)(floor(GetBValue(lightColor) * objectColorBlue * dot * lightRayAlpha / Color_Divide_Constant));
 				}
-			}
-
-			for (const LightSource *sun : m_suns)
-			{
-				const Vector& sunDir = sun->GetPosorDir();
-
-				lightRayAlpha = 1.f;
-				TraceRayFromCollisionToSun(m_triangles, collision, sunDir, lightRayAlpha);
-				TraceRayFromCollisionToSun(m_spheres, collision, sunDir, lightRayAlpha);
-				TraceRayFromCollisionToSun(m_rectangles, collision, sunDir, lightRayAlpha);
-
-				if (lightRayAlpha > 0.f)
-				{
-					const Vector& normal = collision.objectNormal;
-					float dot = normal.dot(sunDir);
-
-					if (dot > 0)
-					{
-						lightColor = sun->GetColor();
-
-						tempRed = (int)(floor(GetRValue(lightColor) * objectColorRed * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionRed;
-						tempGreen = (int)(floor(GetGValue(lightColor) * objectColorGreen * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionGreen;
-						tempBlue = (int)(floor(GetBValue(lightColor) * objectColorBlue * dot * lightRayAlpha / (Color_Divide_Constant))) + collisionBlue;
-
-						collisionRed = tempRed > 255 ? 255 : tempRed;
-						collisionGreen = tempGreen > 255 ? 255 : tempGreen;
-						collisionBlue = tempBlue > 255 ? 255 : tempBlue;
-					}
-				}
-			}
-
-			tempRed = (int)(floor(totalRed + (collisionRed * objectAlpha * eyeRayAlpha)));
-			tempGreen = (int)(floor(totalGreen + (collisionGreen * objectAlpha * eyeRayAlpha)));
-			tempBlue = (int)(floor(totalBlue + (collisionBlue * objectAlpha * eyeRayAlpha)));
-
-			totalRed = tempRed > 255 ? 255 : tempRed;
-			totalGreen = tempGreen > 255 ? 255 : tempGreen;
-			totalBlue = tempBlue > 255 ? 255 : tempBlue;
-
-			eyeRayAlpha -= objectAlpha;
-			if (eyeRayAlpha <= 0.f)
-			{
-				break;
 			}
 		}
 
-		return RGB(totalRed, totalGreen, totalBlue);
+		for (const LightSource *sun : m_suns)
+		{
+			const Vector& sunDir = sun->GetPosorDir();
+
+			lightRayAlpha = 1.f;
+			TraceRayFromCollisionToSun(m_triangles, collision, sunDir, lightRayAlpha);
+			TraceRayFromCollisionToSun(m_spheres, collision, sunDir, lightRayAlpha);
+			TraceRayFromCollisionToSun(m_rectangles, collision, sunDir, lightRayAlpha);
+
+			if (lightRayAlpha > 0.f)
+			{
+				float dot = collision.objectNormal.dot(sunDir);
+
+				if (dot > 0)
+				{
+					lightColor = sun->GetColor();
+
+					tempRed += (int)(floor(GetRValue(lightColor) * objectColorRed * dot * lightRayAlpha / Color_Divide_Constant));
+					tempGreen += (int)(floor(GetGValue(lightColor) * objectColorGreen * dot * lightRayAlpha / Color_Divide_Constant));
+					tempBlue += (int)(floor(GetBValue(lightColor) * objectColorBlue * dot * lightRayAlpha / Color_Divide_Constant));
+				}
+			}
+		}
+
+		Uint8 red = tempRed > 255 ? 255 : tempRed;
+		Uint8 green = tempGreen > 255 ? 255 : tempGreen;
+		Uint8 blue = tempBlue > 255 ? 255 : tempBlue;			
+
+		if (blue > 0 && blue < 140)
+		{
+			int x = 0;
+		}
+
+		return RGB(red, green, blue);
 	}
 
 	template <typename T>
-	void World::GetCollisions(const Vector &rayOrigin, const std::vector<const T*> objects, const Vector &ray, std::vector<Collision>& collisions)
+	bool World::GetClosestCollision(const Vector &rayOrigin, const std::vector<const T*> &objects, const void *originObject, const Vector &ray, Collision &closestCollision)
 	{
+		float closestCollisionDist = closestCollision.distance;
+		bool foundCollision = false;
+
 		float collisionDist;
 		Vector cPoint;
 
 		for (const T *obj : objects)
 		{
-			if (obj->CheckCollision(rayOrigin, ray, collisionDist, cPoint))
+			// See if there is a collision, that the collision distance is less than our current closest, and that the collision distance is greater than zero (with a little room for rounding errors).
+			if (obj != originObject && obj->CheckCollision(rayOrigin, ray, collisionDist, cPoint) && collisionDist < closestCollisionDist && collisionDist > ZERO_WITH_MARGIN_OF_ERROR)
 			{
-				collisions.push_back(Collision(obj, 
+				foundCollision = true;
+				closestCollision = Collision(obj, 
 					cPoint, 
 					collisionDist,
 					obj->GetColorAt(cPoint),
 					obj->GetNormalAt(cPoint, ray),
 					obj->GetAlpha(),
-					obj->GetReflectivity()));
+					obj->GetReflectivity());
 			}
 		}
+
+		return foundCollision;
 	}
 
 	template <typename T>
-	void World::TraceRayFromCollisionToPointLight(const std::vector<const T*> objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha)
+	void World::TraceRayFromCollisionToPointLight(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha)
 	{
 		if (lightRayAlpha <= 0.f)
 		{
@@ -462,7 +445,7 @@ namespace RayTracer
 	}
 
 	template <typename T>
-	void World::TraceRayFromCollisionToSun(const std::vector<const T*> objects, const Collision &collision, const Vector &lightDirection, float &sunRayAlpha)
+	void World::TraceRayFromCollisionToSun(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float &sunRayAlpha)
 	{
 		if (sunRayAlpha <= 0.f)
 		{
@@ -521,7 +504,7 @@ namespace RayTracer
 
 				ray.normalize();
 
-				COLORREF color = TraceRay(m_eye, ray, nullptr, 0);
+				COLORREF color = TraceRay(m_eye, ray, nullptr, 1.f, 0);
 				SetSurfacePixel(surface, x, y, GetRValue(color), GetGValue(color), GetBValue(color));
 			}
 		}

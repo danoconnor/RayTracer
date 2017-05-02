@@ -47,6 +47,8 @@ namespace RayTracer
 		private:
 			struct Collision
 			{
+				Collision() {}
+
 				Collision(const void *obj, const Vector &point, float dist, COLORREF color, const Vector &normal, float alpha, float reflectivity)
 				{
 					object = obj;
@@ -84,20 +86,22 @@ namespace RayTracer
 
 			// Trace ray starting at the origin point and going in the ray direction. 
 			// originObject is used in reflection as the object that the ray originates from. It will be null for rays originating at the eye point.
+			// eyeRayAlpha is used when the main ray casted from the eye is passing though multiple translucent objects.
 			// reflectionRecursion is to make sure that we don't get stuck in an infinite loop of reflections. It will start at 0 for rays coming from the eye and gets incremented everytime the ray is reflected.
-			COLORREF TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, Uint8 reflectionRecursion);
+			COLORREF TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, float eyerayAlpha, Uint8 reflectionRecursion);
 
-			// Appends all collisions between the ray and the collection of objects to the collisions vector.
+			// Checks for any collisions.
+			// If a collision is found, the function returns true and populates the closestCollision parameter.
 			template <typename T> 
-			void GetCollisions(const Vector &rayOrigin, const std::vector<const T*> objects, const Vector &ray, std::vector<Collision> &collisions);
+			bool GetClosestCollision(const Vector &rayOrigin, const std::vector<const T*> &objects, const void *originObject, const Vector &ray, Collision &closestCollision);
 
 			// Traces a ray from the collision point to a given point light. It updates the lightRayAlpha parameter.
 			template <typename T>
-			void TraceRayFromCollisionToPointLight(const std::vector<const T*> objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha);
+			void TraceRayFromCollisionToPointLight(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha);
 
 			// Appends all collisions between the ray and the collection of objects to the collisions vector.
 			template <typename T>
-			void TraceRayFromCollisionToSun(const std::vector<const T*> objects, const Collision &collision, const Vector &lightDirection, float &sunRayAlpha);
+			void TraceRayFromCollisionToSun(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float &sunRayAlpha);
 
 			void DrawWorldSubset(SDL_Surface *surface, int beginY, int endY);
 			inline void SetSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 red, Uint8 green, Uint8 blue);
