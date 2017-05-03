@@ -373,12 +373,7 @@ namespace RayTracer
 
 		Uint8 red = tempRed > 255 ? 255 : tempRed;
 		Uint8 green = tempGreen > 255 ? 255 : tempGreen;
-		Uint8 blue = tempBlue > 255 ? 255 : tempBlue;			
-
-		if (blue > 0 && blue < 140)
-		{
-			int x = 0;
-		}
+		Uint8 blue = tempBlue > 255 ? 255 : tempBlue;
 
 		return RGB(red, green, blue);
 	}
@@ -398,6 +393,7 @@ namespace RayTracer
 			if (obj != originObject && obj->CheckCollision(rayOrigin, ray, collisionDist, cPoint) && collisionDist < closestCollisionDist && collisionDist > ZERO_WITH_MARGIN_OF_ERROR)
 			{
 				foundCollision = true;
+				closestCollisionDist = collisionDist;
 				closestCollision = Collision(obj, 
 					cPoint, 
 					collisionDist,
@@ -467,7 +463,7 @@ namespace RayTracer
 				hasCollision = obj->CheckCollision(collisionPoint, lightDirection, dist, cp);
 				if (hasCollision)
 				{
-					sunRayAlpha -= objectAlpha;
+					sunRayAlpha -= obj->GetAlpha();
 					if (sunRayAlpha <= 0.f)
 					{
 						break;
