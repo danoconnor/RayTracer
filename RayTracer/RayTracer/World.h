@@ -44,6 +44,16 @@ namespace RayTracer
 			const Vector& GetUp();
 			const Vector& GetRight();
 
+			// Trace ray starting at the origin point and going in the ray direction. 
+			// originObject is used in reflection as the object that the ray originates from. It will be null for rays originating at the eye point.
+			// eyeRayAlpha is used when the main ray casted from the eye is passing though multiple translucent objects.
+			// reflectionRecursion is to make sure that we don't get stuck in an infinite loop of reflections. It will start at 0 for rays coming from the eye and gets incremented everytime the ray is reflected.
+			COLORREF TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, float eyerayAlpha, Uint8 reflectionRecursion);
+
+			// Only used for debugging. It's more performant to leave duplicate logic between here and DrawWorldSubset
+			// Takes a window position (x, y) and calculates the ray that corresponds to that pixel
+			Vector GetEyeRay(int x, int y, int windowWidth, int windowHeight);
+
 		private:
 			struct Collision
 			{
@@ -83,12 +93,6 @@ namespace RayTracer
 			};
 
 			static inline bool SortByDistToEye(const Collision &c1, const Collision &c2);
-
-			// Trace ray starting at the origin point and going in the ray direction. 
-			// originObject is used in reflection as the object that the ray originates from. It will be null for rays originating at the eye point.
-			// eyeRayAlpha is used when the main ray casted from the eye is passing though multiple translucent objects.
-			// reflectionRecursion is to make sure that we don't get stuck in an infinite loop of reflections. It will start at 0 for rays coming from the eye and gets incremented everytime the ray is reflected.
-			COLORREF TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, float eyerayAlpha, Uint8 reflectionRecursion);
 
 			// Checks for any collisions.
 			// If a collision is found, the function returns true and populates the closestCollision parameter.

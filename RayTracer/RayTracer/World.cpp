@@ -371,11 +371,31 @@ namespace RayTracer
 			}
 		}
 
+		// TODO - trace from collision point to all available reflective surfaces (minimum distance point)
+		// For each reflective surface collision, trace from the reflective surface to all light sources
+		// If the light source is unblocked, make a copy of it rotated 180 degrees around the reflective surface
+		// Trace from reflected light source to original collision point to get the "reflected" light
+
 		Uint8 red = tempRed > 255 ? 255 : tempRed;
 		Uint8 green = tempGreen > 255 ? 255 : tempGreen;
 		Uint8 blue = tempBlue > 255 ? 255 : tempBlue;
 
 		return RGB(red, green, blue);
+	}
+
+	Vector World::GetEyeRay(int x, int y, int windowWidth, int windowHeight)
+	{
+		int maxDim = windowWidth > windowHeight ? windowWidth : windowHeight;
+		float s = (2.f * x - windowWidth) / maxDim;
+		float t = (windowHeight - 2.f * y) / maxDim;
+
+		Vector ray;
+		ray.m_x = m_forward.m_x + s*m_right.m_x + t*m_up.m_x;
+		ray.m_y = m_forward.m_y + s*m_right.m_y + t*m_up.m_y;
+		ray.m_z = m_forward.m_z + s*m_right.m_z + t*m_up.m_z;
+
+		ray.normalize();
+		return ray;
 	}
 
 	template <typename T>

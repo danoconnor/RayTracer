@@ -334,6 +334,21 @@ void RT::RayTracer::ProcessUserInput()
 				}
 			}
 		}
+		else if (e.type == SDL_MOUSEBUTTONUP)
+		{
+			int x = e.button.x;
+			int y = e.button.y;
+
+			// Trace the ray for the clicked pixel, as a debug mechanism
+			Vector eyeRay = m_world->GetEyeRay(x, y, m_surface->w, m_surface->h);
+			COLORREF pixelColor = m_world->TraceRay(m_world->GetEye(), eyeRay, nullptr, 1.f, 0);
+
+			int red = GetRValue(pixelColor);
+			int green = GetGValue(pixelColor);
+			int blue = GetBValue(pixelColor);
+
+			printf("Pixel color at (%i, %i): (%i, %i, %i)\n", x, y, red, green, blue);
+		}
 	}
 }
 
