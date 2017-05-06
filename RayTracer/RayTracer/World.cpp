@@ -328,9 +328,9 @@ namespace RayTracer
 			distToBulb = xDiff / lightDir.m_x;
 
 			lightRayAlpha = 1.f;
-			TraceRayFromCollisionToPointLight(m_triangles, collision, lightDir, distToBulb, lightRayAlpha);
-			TraceRayFromCollisionToPointLight(m_spheres, collision, lightDir, distToBulb, lightRayAlpha);
-			TraceRayFromCollisionToPointLight(m_rectangles, collision, lightDir, distToBulb, lightRayAlpha);
+			TraceRayFromCollisionToLight(m_triangles, collision, lightDir, distToBulb, lightRayAlpha);
+			TraceRayFromCollisionToLight(m_spheres, collision, lightDir, distToBulb, lightRayAlpha);
+			TraceRayFromCollisionToLight(m_rectangles, collision, lightDir, distToBulb, lightRayAlpha);
 
 			if (lightRayAlpha > 0.f)
 			{
@@ -347,14 +347,16 @@ namespace RayTracer
 			}
 		}
 
+		// Suns are treated as infinitely far from the collision point. 
+		float infiniteDistance = std::numeric_limits<float>::infinity();
 		for (const LightSource *sun : m_suns)
 		{
 			const Vector& sunDir = sun->GetPosorDir();
 
 			lightRayAlpha = 1.f;
-			TraceRayFromCollisionToSun(m_triangles, collision, sunDir, lightRayAlpha);
-			TraceRayFromCollisionToSun(m_spheres, collision, sunDir, lightRayAlpha);
-			TraceRayFromCollisionToSun(m_rectangles, collision, sunDir, lightRayAlpha);
+			TraceRayFromCollisionToLight(m_triangles, collision, sunDir, infiniteDistance, lightRayAlpha);
+			TraceRayFromCollisionToLight(m_spheres, collision, sunDir, infiniteDistance, lightRayAlpha);
+			TraceRayFromCollisionToLight(m_rectangles, collision, sunDir, infiniteDistance, lightRayAlpha);
 
 			if (lightRayAlpha > 0.f)
 			{
@@ -428,7 +430,7 @@ namespace RayTracer
 	}
 
 	template <typename T>
-	void World::TraceRayFromCollisionToPointLight(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha)
+	void World::TraceRayFromCollisionToLight(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha)
 	{
 		if (lightRayAlpha <= 0.f)
 		{
@@ -452,39 +454,6 @@ namespace RayTracer
 				{
 					lightRayAlpha -= objectAlpha;
 					if (lightRayAlpha <= 0.f)
-					{
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	template <typename T>
-	void World::TraceRayFromCollisionToSun(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float &sunRayAlpha)
-	{
-		if (sunRayAlpha <= 0.f)
-		{
-			return;
-		}
-
-		float dist;
-		Vector cp;
-		bool hasCollision;
-
-		const void *collisionObject = collision.object;
-		const Vector& collisionPoint = collision.collisionPoint;
-		float objectAlpha = collision.objectAlpha;
-
-		for (const T *obj : objects)
-		{
-			if (obj != collisionObject)
-			{
-				hasCollision = obj->CheckCollision(collisionPoint, lightDirection, dist, cp);
-				if (hasCollision)
-				{
-					sunRayAlpha -= obj->GetAlpha();
-					if (sunRayAlpha <= 0.f)
 					{
 						break;
 					}

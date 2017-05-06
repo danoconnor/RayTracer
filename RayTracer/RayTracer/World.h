@@ -99,13 +99,9 @@ namespace RayTracer
 			template <typename T> 
 			bool GetClosestCollision(const Vector &rayOrigin, const std::vector<const T*> &objects, const void *originObject, const Vector &ray, Collision &closestCollision);
 
-			// Traces a ray from the collision point to a given point light. It updates the lightRayAlpha parameter.
+			// Traces a ray from the collision point to a given light source (point light or sun). It updates the lightRayAlpha parameter as it encounters any object between the collision and light source.
 			template <typename T>
-			void TraceRayFromCollisionToPointLight(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha);
-
-			// Appends all collisions between the ray and the collection of objects to the collisions vector.
-			template <typename T>
-			void TraceRayFromCollisionToSun(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float &sunRayAlpha);
+			void TraceRayFromCollisionToLight(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha);
 
 			void DrawWorldSubset(SDL_Surface *surface, int beginY, int endY);
 			inline void SetSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 red, Uint8 green, Uint8 blue);
