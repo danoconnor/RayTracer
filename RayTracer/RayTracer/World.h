@@ -92,6 +92,29 @@ namespace RayTracer
 				float objectReflectivity;
 			};
 
+			struct ReflectedLight
+			{
+				ReflectedLight(const void *obj, const Vector& reflectionPoint, const std::vector<const LightSource*> &pointLights, const std::vector<const LightSource*> &suns)
+				{
+					reflectingObject = obj;
+					objectReflectionPoint = reflectionPoint;
+					reflectedPointLights = pointLights;
+					reflectedSuns = suns;
+				}
+
+				// The object that is reflecting the light
+				const void *reflectingObject;
+
+				// The point on the reflecting object that is considered to reflect the light. Generally the center of the object (for simplicity and optimization).
+				Vector objectReflectionPoint;
+
+				// Point lights that are in their reflected positions
+				std::vector<const LightSource*> reflectedPointLights;
+
+				// Suns that are in their reflected directions
+				std::vector<const LightSource*> reflectedSuns;
+			};
+
 			static inline bool SortByDistToEye(const Collision &c1, const Collision &c2);
 
 			// Checks for any collisions.
@@ -101,10 +124,13 @@ namespace RayTracer
 
 			// Traces a ray from the collision point to a given light source (point light or sun). It updates the lightRayAlpha parameter as it encounters any object between the collision and light source.
 			template <typename T>
-			void TraceRayFromCollisionToLight(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, float &lightRayAlpha);
+			void TraceRayFromCollisionToLight(const std::vector<const T*> &objects, const Collision &collision, const Vector &lightDirection, float distanceToLight, const void *reflectingObject, float &lightRayAlpha);
 
 			void DrawWorldSubset(SDL_Surface *surface, int beginY, int endY);
 			inline void SetSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 red, Uint8 green, Uint8 blue);
+
+			// Recalculates the locations of all the reflected lights in the world. Should be called whenever an object or light source is added/removed.
+			void RefreshReflectedLights();
 
 			Vector m_eye;
 			Vector m_forward;
@@ -117,6 +143,7 @@ namespace RayTracer
 
 			std::vector<const LightSource *> m_suns;
 			std::vector<const LightSource *> m_pointLights;
+			std::vector<ReflectedLight> m_reflectedLights;
 
 			std::vector<cimg_library::CImg<unsigned char>> m_loadedTexures;
 

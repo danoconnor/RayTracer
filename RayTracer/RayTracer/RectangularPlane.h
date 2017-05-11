@@ -17,10 +17,17 @@ namespace RayTracer
 			// Returns the normalized normal vector at the given point
 			Vector GetNormalAt(const Vector &point, const  Vector &lookDir) const;
 
+			// Returns the center point of the plane. Used when calculating light reflections off this plane.
+			const Vector& GetCenter() const;
+
 			bool equals(const RectangularPlane &other) const;
 			float GetAlpha() const;
 			float GetRefraction() const;
 			float GetReflectivity() const;
+			float GetA() const;
+			float GetB() const;
+			float GetC() const;
+			float GetD() const;
 
 		private:
 			const cimg_library::CImg<unsigned char> *m_texture;
@@ -40,11 +47,16 @@ namespace RayTracer
 			float m_c;
 			float m_d;
 
+			Vector m_center;
+
 			float m_repeatWidth;
 			float m_repeatHeight;
 
 			void GetCoefficients(const Vector &p1, const Vector &p2, const Vector &p3, float(&coefficients)[4]); // Fills coefficients array with four values representing the coefficients a, b, c, and d for the plane created from the three points p1, p2, and p3
 			void SetCoefficients(float a, float b, float c, float d);
+
+			void SetMinAndMaxValues(Vector p1, Vector p2, Vector p3, Vector p4);
+			void SetCenter(Vector p1, Vector p2, Vector p3, Vector p4);
 
 			float m_minX;
 			float m_maxX;
@@ -54,7 +66,5 @@ namespace RayTracer
 
 			static bool SortByX(const Vector &v1, const Vector &v2);
 			static bool SortByY(const Vector &v1, const Vector &v2);
-
-			void SetMinAndMaxValues(Vector p1, Vector p2, Vector p3, Vector p4);
 	};
 }

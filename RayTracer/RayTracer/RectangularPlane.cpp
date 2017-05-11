@@ -16,6 +16,7 @@ namespace RayTracer
 
 		SetCoefficients(coefficients[0], coefficients[1], coefficients[2], coefficients[3]);
 		SetMinAndMaxValues(p1, p2, p3, p4);
+		SetCenter(p1, p2, p3, p4);
 	}
 
 	RectangularPlane::RectangularPlane(const Vector &p1, const Vector &p2, const Vector &p3, const Vector &p4, const cimg_library::CImg<unsigned char> &texture, float alpha, float refraction, float reflectivity, float repeatWidth, float repeatHeight)
@@ -33,6 +34,7 @@ namespace RayTracer
 
 		SetCoefficients(coefficients[0], coefficients[1], coefficients[2], coefficients[3]);
 		SetMinAndMaxValues(p1, p2, p3, p4);
+		SetCenter(p1, p2, p3, p4);
 	}
 
 	bool RectangularPlane::CheckCollision(const Vector &origin, const Vector &direction, float &distance, Vector &collisionPoint) const
@@ -98,6 +100,11 @@ namespace RayTracer
 		return normal;
 	}
 
+	const Vector& RectangularPlane::GetCenter() const
+	{
+		return m_center;
+	}
+	
 	bool RectangularPlane::equals(const RectangularPlane &other) const
 	{
 		if ((void *)this == (void *)&other)
@@ -143,6 +150,26 @@ namespace RayTracer
 	float RectangularPlane::GetReflectivity() const
 	{
 		return m_reflectivity;
+	}
+
+	float RectangularPlane::GetA() const
+	{
+		return m_a;
+	}
+
+	float RectangularPlane::GetB() const
+	{
+		return m_b;
+	}
+
+	float RectangularPlane::GetC() const
+	{
+		return m_c;
+	}
+
+	float RectangularPlane::GetD() const
+	{
+		return m_d;
 	}
 
 	bool RectangularPlane::SortByX(const Vector &v1, const Vector &v2)
@@ -195,5 +222,19 @@ namespace RayTracer
 
 		m_minY = pointList[0].m_y;
 		m_maxY = pointList[3].m_y;
+	}
+
+	void RectangularPlane::SetCenter(Vector p1, Vector p2, Vector p3, Vector p4)
+	{
+		float avgX = p1.m_x + p2.m_x + p3.m_x + p4.m_x;
+		avgX /= 4.f;
+
+		float avgY = p1.m_y + p2.m_y + p3.m_y + p4.m_y;
+		avgY /= 4.f;
+
+		float avgZ = p1.m_z + p2.m_z + p3.m_z + p4.m_z;
+		avgZ /= 4.f;
+
+		m_center = Vector(avgX, avgY, avgZ);
 	}
 }
