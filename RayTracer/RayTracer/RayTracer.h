@@ -14,6 +14,8 @@ namespace RayTracer
 			void Run();
 			void Stop();
 
+			void SaveSceneToFile(const std::string &outputFilePath);
+
 			void AddTriangle(const TrianglePlane *triangle);
 			void AddSphere(const Sphere *sphere);
 			void AddRectangle(const RectangularPlane* rectangle);
@@ -29,9 +31,11 @@ namespace RayTracer
 
 		private:
 			void RunLoop();
+			void CommandLineInputLoop();
 
 			void DrawWorld();
-			void ProcessUserInput();
+			void ProcessWindowInput();
+			void ProcessCommandLineInput();
 
 			std::atomic<bool> m_isRunning;
 			std::atomic<bool> m_outputFPS;
@@ -39,12 +43,18 @@ namespace RayTracer
 			SDL_Surface *m_surface;
 			SDL_Window *m_window;
 
-			World *m_world; 
+			World *m_world;
 
-			static const short Window_Height = 480;
-			static const short Window_Width = 640;
+			std::mutex m_userInputLock;
+			std::vector<std::string> m_userCommands;
 
-			static const float Movement_Step;
-			static const float Look_Step;
+			const short Window_Height = 1080;
+			const short Window_Width = 1920;
+
+			const short Surface_Pitch = 2560;
+			const short Surface_Pixel_Size = 4;
+
+			const float Movement_Step = 0.2f;
+			const float Look_Step = 0.2f;
 	};
 }

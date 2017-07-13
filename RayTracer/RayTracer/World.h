@@ -147,8 +147,7 @@ namespace RayTracer
 
 			std::vector<cimg_library::CImg<unsigned char>> m_loadedTexures;
 
-			static const short Surface_Pitch = 2560;
-			static const short Surface_Pixel_Size = 4;
-			static const Uint8 Color_Divide_Constant = 255;
+			const Uint8 Color_Divide_Constant = 255;
+			const short Surface_Pixel_Size = 4;
 	};
 }

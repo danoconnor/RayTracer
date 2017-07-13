@@ -18,6 +18,10 @@
 #include <thread>
 #include <atomic>
 #include <assert.h>
+#include <iostream>
+#include <fstream>
+#include <mutex>
+#include <sstream>
 
 #include "CImg-2.0/CImg.h"
 

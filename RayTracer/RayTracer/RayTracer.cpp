@@ -1,10 +1,9 @@
 #include "stdafx.h"
 #include "RayTracer.h"
+#include "StringUtils.h"
 
 namespace RT = RayTracer;
-
-const float RT::RayTracer::Movement_Step = 0.2f;
-const float RT::RayTracer::Look_Step = 0.2f;
+#define SAVE_COMMAND "save"
 
 RT::RayTracer::RayTracer()
 {
@@ -44,6 +43,51 @@ void RT::RayTracer::Run()
 void RT::RayTracer::Stop()
 {
 	m_isRunning = false;
+}
+
+// Write the current scene to a .ppm file (because it has a very simple format) at the given file path
+// Users can convert to a more usable image format using the NetPbm library.
+// Example: ppmtobmp somepic.ppm > somepic.bmp
+void RT::RayTracer::SaveSceneToFile(const std::string &outputFilePath)
+{
+	std::ofstream outputFile;
+	outputFile.open(outputFilePath.c_str(), std::ios::out | std::ios::trunc);
+
+	SDL_Surface *surface = SDL_GetWindowSurface(m_window);
+
+	// Set up the .ppm file header. Should be:
+	// [File type magic number]
+	// [Width] [Height]
+	// [Color max value]
+	outputFile << "P3";
+	outputFile << std::endl;
+	outputFile << surface->w;
+	outputFile << " ";
+	outputFile << surface->h;
+	outputFile << std::endl;
+	outputFile << "255";
+	outputFile << std::endl;
+
+	for (int y = 0; y < surface->h; ++y)
+	{
+		for (int x = 0; x < surface->w; ++x)
+		{
+			Uint8 *pixel = (Uint8 *)surface->pixels + (y * surface->pitch) + (x * Surface_Pixel_Size);
+
+			// The surface stores the color values as Blue-Green-Red, need to output in reverse order to get the proper RGB
+			outputFile << std::to_string(*(pixel + 2));
+			outputFile << " ";
+			outputFile << std::to_string(*(pixel + 1));
+			outputFile << " ";
+			outputFile << std::to_string(*pixel);
+			outputFile << " ";
+		}
+
+		outputFile << std::endl;
+	}
+
+	SDL_UpdateWindowSurface(m_window);
+	outputFile.close();
 }
 
 void RT::RayTracer::AddTriangle(const TrianglePlane *triangle)
@@ -216,12 +260,16 @@ void RT::RayTracer::RunLoop()
 	long begin = 0;
 	long end = 0;
 
+	// Start a new thread to read command line user input
+	std::thread commandLineInputThread(&RT::RayTracer::CommandLineInputLoop, this);
+
 	bool drawWorld = true;
 	while (m_isRunning)
 	{
 		begin = GetTickCount();
 
-		ProcessUserInput();
+		ProcessWindowInput();
+		ProcessCommandLineInput();
 
 		// We're only going to draw the world once but we need the loop to continue to process input so that the window doesn't appear to hang.
 		if (drawWorld)
@@ -243,12 +291,28 @@ void RT::RayTracer::RunLoop()
 		if (m_outputFPS && drawWorld)
 		{
 			printf("FPS: %f\n", fps);
+			SaveSceneToFile("C:\\Users\\dpo3y\\Desktop\\TestImage.ppm");
 			drawWorld = false;
 		}
 	}
 }
 
-void RT::RayTracer::ProcessUserInput()
+void RT::RayTracer::CommandLineInputLoop()
+{
+	while (m_isRunning)
+	{
+		std::string commandInput;
+		std::getline(std::cin, commandInput);
+
+		// Scope the lock_guard so the lock is automatically released after we add the latest command to the queue
+		{
+			std::lock_guard<std::mutex> lock(m_userInputLock);
+			m_userCommands.push_back(commandInput);
+		}
+	}
+}
+
+void RT::RayTracer::ProcessWindowInput()
 {
 	SDL_Event e;
 	while (SDL_PollEvent(&e) != 0)
@@ -350,6 +414,52 @@ void RT::RayTracer::ProcessUserInput()
 			printf("Pixel color at (%i, %i): (%i, %i, %i)\n", x, y, red, green, blue);
 		}
 	}
+}
+
+void RT::RayTracer::ProcessCommandLineInput()
+{
+	// Lock so that commands aren't being added to the queue while we process existing commands
+	std::lock_guard<std::mutex> lock(m_userInputLock);
+
+	for (const std::string &inputLine : m_userCommands)
+	{
+		std::vector<std::string> parsedCommand = StringUtils::SplitStr(inputLine, ' ');
+		std::string errorMessage;
+
+		if (parsedCommand.size() > 0)
+		{
+			const std::string &command = parsedCommand[0];
+
+			if (command == SAVE_COMMAND)
+			{
+				if (parsedCommand.size() > 1)
+				{
+					const std::string &filePath = parsedCommand[1];
+
+					if (filePath.find(".ppm") != std::string::npos)
+					{
+						SaveSceneToFile(filePath);
+					}
+					else
+					{
+						errorMessage = "File must be a .ppm file";
+					}
+				}
+				else
+				{
+					errorMessage = "Invalid syntax. Usage is 'save [file path]'.";
+				}
+			}
+		}
+
+		if (errorMessage.length() > 0)
+		{
+			std::cout << errorMessage << std::endl;
+		}
+	}
+
+	// Clear the command queue since all commands have now been processed
+	m_userCommands.clear();
 }
 
 void RT::RayTracer::DrawWorld()
