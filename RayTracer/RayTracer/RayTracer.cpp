@@ -19,8 +19,16 @@ RT::RayTracer::RayTracer()
 	m_surface = SDL_GetWindowSurface(m_window);
 
 	m_world = new World();
+
+	// TRex viewing
 	//m_world->SetEye(Vector(-230, 350, 1000));
-	//m_world->SetForward(Vector(-1, 0, -1.f));
+	//m_world->SetForward(Vector(.8f, -.2f, -1.f));
+
+	// Tree viewing
+	m_world->SetEye(Vector(0, 50, 150));
+	m_world->SetForward(Vector(0, 0, -1));
+
+	m_world->SetAmbientLight(0x60);
 
 	m_isRunning = false;
 	m_outputFPS = true;
@@ -117,10 +125,10 @@ void RT::RayTracer::AddPointLight(const LightSource* pointLight)
 
 void RT::RayTracer::Add3DObject(const std::string &filePath)
 {
-	Add3DObject(filePath, Vector(0, 0, 0), 0, 0, 0);
+	Add3DObject(filePath, Vector(0, 0, 0), 0, 0, 0, 1);
 }
 
-void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &translation, float rotationX, float rotationY, float rotationZ)
+void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &translation, float rotationX, float rotationY, float rotationZ, float scale)
 {
 	Assimp::Importer importer;
 	const aiScene *scene = importer.ReadFile(filePath,
@@ -134,7 +142,6 @@ void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &trans
 		printf("Error when trying to import %s.\nError string: %s", filePath.c_str(), error.c_str());
 	}
 
-	std::vector<const RT::TrianglePlane*> meshTriangles;
 	if (scene != nullptr)
 	{
 		COLORREF triangleColor = 0xffffffff;
@@ -146,6 +153,11 @@ void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &trans
 		float avgZ = 0;
 		unsigned int numTriangleVertices = mesh->mNumFaces * 3;
 
+		// Debug info only
+		float maxX, minX, maxY, minY, maxZ, minZ;
+		maxX = maxY = maxZ = (-1 * std::numeric_limits<float>::infinity());
+		minX = minY = minZ = std::numeric_limits<float>::infinity();
+
 		// Iterate through all the object triangles. Calculate the center of the object (for rotation purposes) and move the raw object data into our custom Triangle class.
 		for (unsigned int faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
 		{
@@ -153,9 +165,9 @@ void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &trans
 			assert(face.mNumIndices == 3);
 			if (face.mNumIndices == 3)
 			{
-				aiVector3D vertex1 = mesh->mVertices[face.mIndices[0]];
-				aiVector3D vertex2 = mesh->mVertices[face.mIndices[1]];
-				aiVector3D vertex3 = mesh->mVertices[face.mIndices[2]];
+				aiVector3D vertex1 = mesh->mVertices[face.mIndices[0]] * scale;
+				aiVector3D vertex2 = mesh->mVertices[face.mIndices[1]] * scale;
+				aiVector3D vertex3 = mesh->mVertices[face.mIndices[2]] * scale;
 
 				avgX += (vertex1.x + vertex2.x + vertex3.x);
 				avgY += (vertex1.y + vertex2.y + vertex3.y);
@@ -240,6 +252,20 @@ void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &trans
 			p1 = p1 + translation;
 			p2 = p2 + translation;
 			p3 = p3 + translation;
+
+			// Debug info only
+			std::vector<float> xValuesMax({ maxX, p1.m_x, p2.m_x, p3.m_x });
+			std::vector<float> yValuesMax({ maxY, p1.m_y, p2.m_y, p3.m_y });
+			std::vector<float> zValuesMax({ maxZ, p1.m_z, p2.m_z, p3.m_z });
+			std::vector<float> xValuesMin({ minX, p1.m_x, p2.m_x, p3.m_x });
+			std::vector<float> yValuesMin({ minY, p1.m_y, p2.m_y, p3.m_y });
+			std::vector<float> zValuesMin({ minZ, p1.m_z, p2.m_z, p3.m_z });
+			maxX = *std::max_element(xValuesMax.begin(), xValuesMax.end());
+			maxY = *std::max_element(yValuesMax.begin(), yValuesMax.end());
+			maxZ = *std::max_element(zValuesMax.begin(), zValuesMax.end());
+			minX = *std::min_element(xValuesMin.begin(), xValuesMin.end());
+			minY = *std::min_element(yValuesMin.begin(), yValuesMin.end());
+			minZ = *std::min_element(zValuesMin.begin(), zValuesMin.end());
 			
 			AddTriangle(new RT::TrianglePlane(
 				p1,
@@ -251,6 +277,12 @@ void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &trans
 				triangle.GetReflectivity()
 			));
 		}
+
+		// Debug info only
+		std::cout << "Imported file " << filePath << " with " << (numTriangleVertices / 3) << " triangles." << std::endl;
+		std::cout << "    Min values: " << minX << " " << minY << " " << minZ << std::endl;
+		std::cout << "    Max values: " << maxX << " " << maxY << " " << maxZ << std::endl;
+		std::cout << "    Avg values: " << avgX << " " << avgY << " " << avgZ << std::endl;
 	}
 }
 
@@ -266,33 +298,22 @@ void RT::RayTracer::RunLoop()
 	bool drawWorld = true;
 	while (m_isRunning)
 	{
-		begin = GetTickCount();
-
 		ProcessWindowInput();
 		ProcessCommandLineInput();
 
 		// We're only going to draw the world once but we need the loop to continue to process input so that the window doesn't appear to hang.
 		if (drawWorld)
 		{
+			begin = GetTickCount();
 			DrawWorld();
-		}
+			end = GetTickCount();
 
-		end = GetTickCount();
-
-		if (begin != end)
-		{
-			fps = (1.f / (end - begin)) * 1000;
-		}
-		else
-		{
-			fps = 1000;
-		}
-		
-		if (m_outputFPS && drawWorld)
-		{
-			printf("FPS: %f\n", fps);
-			SaveSceneToFile("C:\\Users\\dpo3y\\Desktop\\TestImage.ppm");
 			drawWorld = false;
+
+			if (m_outputFPS)
+			{
+				std::cout << "Rendering took " << ((end - begin) / CLOCKS_PER_SEC) << " seconds." << std::endl;
+			}
 		}
 	}
 }

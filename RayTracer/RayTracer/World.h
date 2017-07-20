@@ -44,6 +44,8 @@ namespace RayTracer
 			const Vector& GetUp();
 			const Vector& GetRight();
 
+			void SetAmbientLight(float ambientLightAlpha);
+
 			// Trace ray starting at the origin point and going in the ray direction. 
 			// originObject is used in reflection as the object that the ray originates from. It will be null for rays originating at the eye point.
 			// eyeRayAlpha is used when the main ray casted from the eye is passing though multiple translucent objects.
@@ -136,6 +138,8 @@ namespace RayTracer
 			Vector m_forward;
 			Vector m_right;
 			Vector m_up;
+
+			float m_ambientAlpha;
 
 			std::vector<const TrianglePlane *> m_triangles;
 			std::vector<const Sphere *> m_spheres;

@@ -7,7 +7,11 @@
 
 namespace RayTracer
 {
-	World::World() : m_eye(0, 0, 0), m_forward(0, 0, -1), m_right(1, 0, 0), m_up(0, 1, 0)
+	World::World() : m_eye(0, 0, 0), 
+		m_forward(0, 0, -1), 
+		m_right(1, 0, 0), 
+		m_up(0, 1, 0), 
+		m_ambientAlpha(0)
 	{
 	}
 
@@ -263,6 +267,11 @@ namespace RayTracer
 		return m_right;
 	}
 
+	void World::SetAmbientLight(float ambientLightAlpha)
+	{
+		m_ambientAlpha = ambientLightAlpha;
+	}
+
 	// TODO - originObject is currently not being used but could be useful when we implement refraction so I'll leave it for now.
 	COLORREF World::TraceRay(const Vector &rayOrigin, const Vector &ray, const void *originObject, float eyeRayAlpha, Uint8 reflectionRecursion)
 	{
@@ -330,11 +339,12 @@ namespace RayTracer
 		COLORREF lightColor;
 		const Vector& normal = collision.objectNormal;
 
-		// These represent the final RGB values, taking into consideration the lighting.
+		// These represent the final RGB values, taking into consideration the lighting. Initialize them to the ambient light values so the object
+		// has the desired color even if there is no lighting.
 		// They need to be uint32 for now to handle any potential overflow, but will be fit into uint8's for the final return value.
-		unsigned int tempRed = 0;
-		unsigned int tempGreen = 0;
-		unsigned int tempBlue = 0;
+		unsigned int tempRed = (int)floor((objectColorRed * m_ambientAlpha) / Color_Divide_Constant);
+		unsigned int tempGreen = (int)floor((objectColorGreen * m_ambientAlpha) / Color_Divide_Constant);
+		unsigned int tempBlue = (int)floor((objectColorBlue * m_ambientAlpha) / Color_Divide_Constant);
 		
 		for (const LightSource *pointlight : m_pointLights)
 		{
