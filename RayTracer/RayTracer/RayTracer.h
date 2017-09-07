@@ -48,8 +48,8 @@ namespace RayTracer
 			std::mutex m_userInputLock;
 			std::vector<std::string> m_userCommands;
 
-			const short Window_Height = 480;
-			const short Window_Width = 640;
+			const short Window_Height = 2160;
+			const short Window_Width = 3840;
 
 			const short Surface_Pitch = 2560;
 			const short Surface_Pixel_Size = 4;

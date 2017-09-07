@@ -21,12 +21,12 @@ RT::RayTracer::RayTracer()
 	m_world = new World();
 
 	// TRex viewing
-	//m_world->SetEye(Vector(-230, 350, 1000));
-	//m_world->SetForward(Vector(.8f, -.2f, -1.f));
+	m_world->SetEye(Vector(-230, 350, 1000));
+	m_world->SetForward(Vector(.8f, -.2f, -1.f));
 
 	// Tree viewing
-	m_world->SetEye(Vector(0, 50, 150));
-	m_world->SetForward(Vector(0, 0, -1));
+	//m_world->SetEye(Vector(0, 5, 20));
+	//m_world->SetForward(Vector(0, 0, -1));
 
 	m_world->SetAmbientLight(0x60);
 
@@ -145,41 +145,46 @@ void RT::RayTracer::Add3DObject(const std::string &filePath, const Vector &trans
 	if (scene != nullptr)
 	{
 		COLORREF triangleColor = 0xffffffff;
-		aiMesh *mesh = scene->mMeshes[0];
 		std::vector<RT::TrianglePlane> objectTriangles;
 
 		float avgX = 0;
 		float avgY = 0;
 		float avgZ = 0;
-		unsigned int numTriangleVertices = mesh->mNumFaces * 3;
+		unsigned int numTriangleVertices = 0;
 
 		// Debug info only
 		float maxX, minX, maxY, minY, maxZ, minZ;
 		maxX = maxY = maxZ = (-1 * std::numeric_limits<float>::infinity());
 		minX = minY = minZ = std::numeric_limits<float>::infinity();
 
-		// Iterate through all the object triangles. Calculate the center of the object (for rotation purposes) and move the raw object data into our custom Triangle class.
-		for (unsigned int faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
+		for (int i = 0; i < scene->mNumMeshes; i++)
 		{
-			aiFace face = mesh->mFaces[faceIndex];
-			assert(face.mNumIndices == 3);
-			if (face.mNumIndices == 3)
+			aiMesh *mesh = scene->mMeshes[i];
+			numTriangleVertices += mesh->mNumFaces * 3;
+
+			// Iterate through all the object triangles. Calculate the center of the object (for rotation purposes) and move the raw object data into our custom Triangle class.
+			for (unsigned int faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++)
 			{
-				aiVector3D vertex1 = mesh->mVertices[face.mIndices[0]] * scale;
-				aiVector3D vertex2 = mesh->mVertices[face.mIndices[1]] * scale;
-				aiVector3D vertex3 = mesh->mVertices[face.mIndices[2]] * scale;
+				aiFace face = mesh->mFaces[faceIndex];
+				assert(face.mNumIndices == 3);
+				if (face.mNumIndices == 3)
+				{
+					aiVector3D vertex1 = mesh->mVertices[face.mIndices[0]] * scale;
+					aiVector3D vertex2 = mesh->mVertices[face.mIndices[1]] * scale;
+					aiVector3D vertex3 = mesh->mVertices[face.mIndices[2]] * scale;
 
-				avgX += (vertex1.x + vertex2.x + vertex3.x);
-				avgY += (vertex1.y + vertex2.y + vertex3.y);
-				avgZ += (vertex1.z + vertex2.z + vertex3.z);
+					avgX += (vertex1.x + vertex2.x + vertex3.x);
+					avgY += (vertex1.y + vertex2.y + vertex3.y);
+					avgZ += (vertex1.z + vertex2.z + vertex3.z);
 
-				objectTriangles.push_back(RT::TrianglePlane(RT::Vector(vertex1.x, vertex1.y, vertex1.z),
-					RT::Vector(vertex2.x, vertex2.y, vertex2.z),
-					RT::Vector(vertex3.x, vertex3.y, vertex3.z),
-					triangleColor,
-					1.f,
-					1.f,
-					0.f));
+					objectTriangles.push_back(RT::TrianglePlane(RT::Vector(vertex1.x, vertex1.y, vertex1.z),
+						RT::Vector(vertex2.x, vertex2.y, vertex2.z),
+						RT::Vector(vertex3.x, vertex3.y, vertex3.z),
+						triangleColor,
+						1.f,
+						1.f,
+						0.f));
+				}
 			}
 		}
 

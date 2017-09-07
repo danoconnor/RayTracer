@@ -91,26 +91,26 @@ void AddTestObjectsToWorld(RayTracer::RayTracer& tracer)
 	RayTracer::LightSource *pointlight2 = new RayTracer::LightSource(RayTracer::Vector(0, 0, -4.5));
 	//tracer.AddPointLight(pointlight2);
 
-	RayTracer::LightSource *pointlight3 = new RayTracer::LightSource(RayTracer::Vector(4.5, 0, -2));
+	RayTracer::LightSource *pointlight3 = new RayTracer::LightSource(RayTracer::Vector(4.5, 0, -2), RGB(0x11, 0x11, 0x11));
 	//tracer.AddPointLight(pointlight3);
 
-	RayTracer::LightSource *pointlight4 = new RayTracer::LightSource(RayTracer::Vector(-4.5, 0, -2));
+	RayTracer::LightSource *pointlight4 = new RayTracer::LightSource(RayTracer::Vector(-4.5, 0, -2), RGB(0x11, 0x11, 0x11));
 	//tracer.AddPointLight(pointlight4);
 	
 	RayTracer::LightSource *sun = new RayTracer::LightSource(RayTracer::Vector(-1, 1, 0), RGB(0xaa, 0xaa, 0xaa));
-	tracer.AddSun(sun);
+	//tracer.AddSun(sun);
 	
 	RayTracer::LightSource *sun2 = new RayTracer::LightSource(RayTracer::Vector(0, -1, 0), RGB(0x30, 0x30, 0x30));
-	tracer.AddSun(sun2);
+	//tracer.AddSun(sun2);
 	
 	RayTracer::LightSource *sun3 = new RayTracer::LightSource(RayTracer::Vector(0, 0, 1), RGB(0xff, 0xff, 0xff));
 	//tracer.AddSun(sun3);
 
 	RayTracer::LightSource *sun4 = new RayTracer::LightSource(RayTracer::Vector(-1, 1, 0), RGB(0xbb, 0xbb, 0xbb));
-	//tracer.AddSun(sun4);
+	tracer.AddSun(sun4);
 	
-	//tracer.Add3DObject("Textures/Tree_V10_Final.obj", RayTracer::Vector(0, 0, 0), 90, 0, 0, 5);
-	//tracer.Add3DObject("Textures/trex.stl", RayTracer::Vector(0, 0, 0), 90, 0, 0, 3);
+	//tracer.Add3DObject("Textures/Tree_V10_Final.obj", RayTracer::Vector(0, 0, 0), 0, 0, 0, 1);
+	tracer.Add3DObject("Textures/trex.stl", RayTracer::Vector(0, 0, 0), 0, 0, 0, 1);
 }
 
 int _tmain(int argc, _TCHAR *argv[])
